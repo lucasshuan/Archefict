@@ -1,9 +1,4 @@
 {
-  "recommendations": [
-    "biomejs.biome",
-    "TypeScriptTeam.native-preview",
-    "ms-playwright.playwright",
-    "vitest.explorer"
-  ],
+  "recommendations": ["biomejs.biome", "TypeScriptTeam.native-preview", "vitest.explorer"],
   "unwantedRecommendations": ["esbenp.prettier-vscode", "dbaeumer.vscode-eslint"]
 }

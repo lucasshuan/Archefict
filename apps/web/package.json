@@ -7,9 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run",
-    "test:e2e": "playwright test"
+    "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@archefict/ai": "workspace:*",
@@ -25,17 +23,11 @@
   },
   "devDependencies": {
     "@archefict/config": "workspace:*",
-    "@playwright/test": "catalog:",
-    "@solidjs/testing-library": "catalog:",
     "@tailwindcss/vite": "catalog:",
-    "@testing-library/jest-dom": "catalog:",
     "@types/node": "catalog:",
-    "@vitest/browser-playwright": "catalog:",
-    "playwright": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-solid": "catalog:",
-    "vitest": "catalog:"
+    "vite-plugin-solid": "catalog:"
   }
 }

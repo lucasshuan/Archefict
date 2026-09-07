@@ -10,7 +10,7 @@
 - **Play first.** Every slice ends with a playtest: a real campaign, a real session, and notes on what broke. Nothing is "done" until it has been played with.
 - **Vertical slices, not layers.** A slice touches data, editor, UI and tests together. There is no kernel-only phase. Kernel code appears when a slice needs it and gets extracted into a package when a second slice needs it too. Property tests land at extraction time.
 - **Bets are tested by playing with them,** not by reading about them. A spike that cannot be poked at inside a throwaway app shell within a day is too big.
-- **Every bug found in play becomes a test.** One real campaign from your past sessions is the permanent test fixture.
+- **Tests only where they pay: the API and the kernel packages.** The web app has no component or end-to-end tests while its features are undecided; it is verified by playing. A bug found in play that lives in kernel or API code becomes a test there. One real campaign from your past sessions is the permanent fixture.
 
 ---
 
@@ -75,7 +75,7 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [x] OpenRouter narration through the AI SDK with a device-held key; the streamed reply is written to the document once, with model, turn id and token usage in provenance
 - [x] Settings: key, model (default Claude Haiku 4.5), narrator instructions
 - [x] (kernel) NarrativeEntry, Provenance, AiSettings schemas; `campaign-index` and `timeline:<id>` documents
-- [x] Tests: schema property test, CRDT round-trip, message mapping, Chromium component test, Playwright persistence + settings
+- [x] Tests: schema property test, CRDT round-trip, message mapping, API. Web component and e2e tests were removed on Sep 07, 2026 (decision above)
 - [x] `apps/api` (Hono + oRPC on Node 24) and `packages/contract` created early to fix the boundary: health, model catalogue with live prices, OpenAPI document. Narration stays in the browser with the device-owned key
 - [x] Writes are flushed to IndexedDB after every entry and the header shows saving/saved; a reload inside the Repo's save debounce used to lose the entry
 - [x] Unsent composer draft kept per campaign across reloads
@@ -258,7 +258,7 @@ Nothing earlier may depend on a shell. The platform interface keeps the door ope
 ### Quality
 - [ ] Property tests: serializer round-trips, operation inverses, CRDT merge invariants
 - [ ] Browser-mode tests for sandbox, iframe and WASM code
-- [ ] E2E: local campaign, one AI turn, two-device sync, one plugin install
+- [ ] Sync and plugin-host code get tests when they exist; the web UI does not
 - [ ] Performance budgets: boot, large sheet open, long chat scroll
 
 ### Docs and ops

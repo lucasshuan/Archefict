@@ -29,12 +29,11 @@ First run: open Settings, paste an OpenRouter API key, pick a model (default: Cl
 ```sh
 pnpm lint                # Biome (format + lint, includes Solid rules)
 pnpm typecheck           # TypeScript 7 across the workspace
-pnpm test                # Vitest: node tests in packages, Chromium tests in apps/web
-pnpm test:e2e            # Playwright against the dev server
+pnpm test                # Vitest: kernel packages and the API. The web app has no automated tests
 pnpm check               # lint + typecheck + test
 ```
 
-Component and end-to-end tests need a browser: `pnpm --filter @archefict/web exec playwright install chromium` once.
+The web app is verified by playing, not by tests, while its features are still moving. See `ARCHITECTURE.md`.
 
 ## Playtest
 
@@ -66,7 +65,7 @@ packages/config     Shared tsconfig presets.
 docs/               Product, roadmap, stack review, playtests, ADRs.
 ```
 
-Internal packages export TypeScript source directly; Vite and Vitest consume it without a build step. Publishing (the plugin SDK, later) adds a build.
+Internal packages export TypeScript source directly; Vite, Vitest and Node consume it without a build step. Publishing (the plugin SDK, later) adds a build.
 
 ## Editor notes
 
