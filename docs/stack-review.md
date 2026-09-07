@@ -428,7 +428,7 @@ A concrete list. Every item is either current stable or a deliberate exception n
 | Release | Changesets | Provenance-enabled publishing for the SDK |
 | Runtime | Node 24 LTS | Bun stays out of the critical path |
 | Hooks | lefthook | Conventional commits optional |
-| Docs | Architecture decision records from day one in `docs/adr` | The decisions in this review become the first records |
+| Docs | Compact architecture notes only when they change implementation | No ADR or per-playtest filing requirement |
 | Containers | Distroless images, a devcontainer | |
 
 ---

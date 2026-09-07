@@ -28,7 +28,7 @@ Validation applies only to keys a component claims. Everything else is free.
 - Documents: `campaign-index`, `sheet:<id>`, `timeline:<id>`, `chat:<id>` (chunked), `plugin-state:<id>`. Never one doc per campaign.
 - Security state (membership, grants, keys) lives in Postgres. Never in a CRDT.
 - Canonical rich structure, then serializers, then human views / compact AI view / Markdown export. Markdown is a representation, not storage.
-- Message content and model-response exploration **(bet)**: [`message-response-format.md`](message-response-format.md).
+- AI turn, message-part and background-work exploration **(bet)**: [`ai-turn-bets.md`](ai-turn-bets.md).
 - Fictional campaign time is its own type. Not `Date`.
 
 ## Write pipeline (the real security boundary)
@@ -39,7 +39,7 @@ proposal (user | plugin | AI)
   → deterministic policy → risk tier / approval → transaction (+ provenance)
 ```
 
-The context-model to executor-model handoff is defense in depth only. A schema-valid plan can still be malicious. The pipeline must hold with an uncensored local model as the context model.
+Any multi-model split is defense in depth only. A schema-valid proposal can still be malicious. The pipeline must hold with an uncensored local model proposing operations.
 
 ## Stack
 
@@ -68,7 +68,7 @@ The context-model to executor-model handoff is defense in depth only. A schema-v
 | MCP | Spec 2026-07-28, TS SDK v2 | Client first; Archefict as server later; local stdio via Tauri sidecar |
 | Shells | PWA first; Tauri 2 desktop and mobile later | Architecturally equal targets via the platform interface, but both shells ship after the web app |
 | Marketplace | Signed, content-addressed, hash-pinned bundles | Revocation list, permission diffs, scanned vs verified tiers, sideload with reduced grants |
-| Monorepo | pnpm 12, Turborepo, internal packages export source | Biome 2 with its Solid domain (no ESLint: typescript-eslint cannot run on TS 7 until 7.1), Zod 4 / Standard Schema, Vitest 4 browser mode, Playwright, Testcontainers, fast-check, Changesets with provenance, lefthook, ADRs. `isolatedDeclarations` only on published packages |
+| Monorepo | pnpm 12, Turborepo, internal packages export source | Biome 2 with its Solid domain (no ESLint: typescript-eslint cannot run on TS 7 until 7.1), Zod 4 / Standard Schema, Vitest 4 browser mode, Playwright, Testcontainers, fast-check, Changesets with provenance, lefthook. `isolatedDeclarations` only on published packages |
 
 **Not adopted:** Extism as host infrastructure · Effect-TS · Markdown as storage · mandatory sheet types · cross-origin isolation in the main document · Bun in the critical path · Comlink.
 
@@ -104,5 +104,5 @@ Ordering lives in `ROADMAP.md`, which is play-first: vertical slices, no kernel-
 apps/       web · site · api · sync · desktop
 packages/   schema · model · crdt · serialize · projection · search · editor · panels
             platform · plugin-sdk · plugin-host · ai · ui · config
-docs/adr/   this document becomes ADR-0001
+docs/       compact product bets and architecture notes
 ```

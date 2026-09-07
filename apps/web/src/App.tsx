@@ -1,7 +1,6 @@
 import type { CampaignHandles } from "@archefict/crdt";
 import Check from "lucide-solid/icons/check";
 import LoaderCircle from "lucide-solid/icons/loader-circle";
-import Menu from "lucide-solid/icons/menu";
 import TriangleAlert from "lucide-solid/icons/triangle-alert";
 import { createResource, createSignal, Match, Show, Switch } from "solid-js";
 import { createTurnRunner, type SaveState } from "./ai/turn.ts";
@@ -13,6 +12,7 @@ import { EditableTitle } from "./components/EditableTitle.tsx";
 import { NarrativeFeed } from "./components/NarrativeFeed.tsx";
 import { SettingsDialog } from "./components/SettingsDialog.tsx";
 import { GUEST, Sidebar } from "./components/Sidebar.tsx";
+import { SidebarToggle } from "./components/SidebarToggle.tsx";
 import { createSettingsStore, type SettingsStore } from "./settings.ts";
 
 export function App() {
@@ -47,6 +47,7 @@ function Shell(props: { library: Library; persisted: boolean }) {
 
   return (
     <div class="flex h-full">
+      <SidebarToggle open={sidebarOpen()} onToggle={() => setSidebarOpen((open) => !open)} />
       <Sidebar
         campaigns={props.library.campaigns()}
         activeUrl={props.library.active()?.index.url ?? null}
@@ -66,8 +67,8 @@ function Shell(props: { library: Library; persisted: boolean }) {
           <Session
             handles={handles}
             settings={settingsStore}
+            drawerOpen={sidebarOpen()}
             onRename={(name) => void props.library.rename(name)}
-            onOpenMenu={() => setSidebarOpen(true)}
           />
         )}
       </Show>
@@ -89,8 +90,8 @@ function Shell(props: { library: Library; persisted: boolean }) {
 function Session(props: {
   handles: CampaignHandles;
   settings: SettingsStore;
+  drawerOpen: boolean;
   onRename: (name: string) => void;
-  onOpenMenu: () => void;
 }) {
   const index = createDocSignal(props.handles.index);
   const timeline = createDocSignal(props.handles.timeline);
@@ -101,16 +102,8 @@ function Session(props: {
   });
 
   return (
-    <main class="flex min-w-0 flex-1 flex-col">
-      <header class="flex items-center gap-2 px-4 py-3">
-        <button
-          type="button"
-          class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg md:hidden"
-          aria-label="Open menu"
-          onClick={() => props.onOpenMenu()}
-        >
-          <Menu size={18} aria-hidden="true" />
-        </button>
+    <main class="flex min-w-0 flex-1 flex-col" inert={props.drawerOpen}>
+      <header class="flex items-center gap-2 py-3 pl-14 pr-4">
         <EditableTitle value={index().name} onCommit={props.onRename} />
         <SaveIndicator state={turn.saveState()} />
       </header>

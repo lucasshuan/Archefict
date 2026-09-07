@@ -9,7 +9,8 @@ Never act for the player. Keep replies to a few paragraphs. End on something the
 
 export const DEFAULT_SETTINGS: AiSettings = {
   apiKey: "",
-  model: DEFAULT_MODEL,
+  narratorModel: DEFAULT_MODEL,
+  backgroundModel: DEFAULT_MODEL,
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
 };
 
@@ -42,18 +43,36 @@ function load(): AiSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    const parsed = AiSettings.safeParse(JSON.parse(raw));
+    const parsed = AiSettings.safeParse(migrateModelSettings(JSON.parse(raw)));
     if (!parsed.success) return DEFAULT_SETTINGS;
-    if (parsed.data.systemPrompt !== LEGACY_DEFAULT_SYSTEM_PROMPT) return parsed.data;
-
-    const migrated = { ...parsed.data, systemPrompt: DEFAULT_SYSTEM_PROMPT };
+    const migrated = {
+      ...parsed.data,
+      systemPrompt:
+        parsed.data.systemPrompt === LEGACY_DEFAULT_SYSTEM_PROMPT
+          ? DEFAULT_SYSTEM_PROMPT
+          : parsed.data.systemPrompt,
+    };
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(migrated));
     } catch {
-      // The migrated prompt still applies for this session when storage is unavailable.
+      // The migrated settings still apply for this session when storage is unavailable.
     }
     return migrated;
   } catch {
     return DEFAULT_SETTINGS;
   }
+}
+
+function migrateModelSettings(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+  const next = { ...(value as Record<string, unknown>) };
+
+  if (typeof next["narratorModel"] !== "string" && typeof next["model"] === "string") {
+    next["narratorModel"] = next["model"];
+  }
+  if (typeof next["backgroundModel"] !== "string" && typeof next["narratorModel"] === "string") {
+    next["backgroundModel"] = next["narratorModel"];
+  }
+
+  return next;
 }

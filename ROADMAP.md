@@ -7,7 +7,7 @@
 
 ## How we work
 
-- **Play first.** Every slice ends with a playtest: a real campaign, a real session, and notes on what broke. Nothing is "done" until it has been played with.
+- **Play first.** Every slice ends with a real campaign or session. Keep only findings that change the plan, inline in the relevant roadmap item or bet; no separate playtest report.
 - **Vertical slices, not layers.** A slice touches data, editor, UI and tests together. There is no kernel-only phase. Kernel code appears when a slice needs it and gets extracted into a package when a second slice needs it too. Property tests land at extraction time.
 - **Bets are tested by playing with them,** not by reading about them. A spike that cannot be poked at inside a throwaway app shell within a day is too big.
 - **Tests only where they pay: the API and the kernel packages.** The web app has no component or end-to-end tests while its features are undecided; it is verified by playing. A bug found in play that lives in kernel or API code becomes a test there. One real campaign from your past sessions is the permanent fixture.
@@ -26,7 +26,6 @@
 - [ ] Image generation stance: PRODUCT.md says no for now. Keep or revise.
 - [x] Mobile for v1: **Decided Sep 06, 2026: later.** Desktop shell also later. Multi-device in v1 means the web app on several devices.
 - [ ] Revise `PRODUCT.md` with the outcomes above. Keep it the truth.
-- [ ] Write ADR-0001 (kernel primitives, data model, write pipeline) from `docs/stack.md` once confirmed.
 
 ### Playable spikes (throwaway, inside a scratch app shell so you can poke them)
 - [ ] Automerge 3 + ProseMirror: edit a sheet with body + fields, sync two tabs, measure doc size after 1k edits. **(bet)**
@@ -58,7 +57,6 @@ Only what is needed to run and test the web app. The rest is done alongside Phas
 - [ ] Changesets; publishing with provenance (needed at Phase 5 for the SDK)
 - [ ] Security CI: vulnerability scan on lockfile, secret scanning, SBOM on release
 - [ ] lefthook done (pre-commit Biome, pre-push typecheck + test). Renovate with cooldown: pending
-- [ ] `docs/adr/` and `docs/playtests/` exist with templates. ADR-0001 pending
 - [ ] Remaining package skeletons from `docs/stack.md` as slices need them
 
 ---
@@ -73,15 +71,15 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [x] Narrative feed + composer; entries render sanitized Markdown and persist their editable source to IndexedDB through Automerge Repo; tabs sync over BroadcastChannel
 - [x] Storage persistence request, result shown in the header
 - [x] OpenRouter narration through the AI SDK with a device-held key; the streamed reply is written to the document once, with model, turn id and token usage in provenance
-- [x] Settings: key, model (default Claude Haiku 4.5), narrator instructions
+- [x] Settings: key, separate narrator and background model autocompletes (both default Claude Haiku 4.5), narrator instructions; the background model is reserved until handoff execution lands
 - [x] (kernel) NarrativeEntry, Provenance, AiSettings schemas; `campaign-index` and `timeline:<id>` documents
 - [x] Tests: schema property test, CRDT round-trip, message mapping, API. Web component and e2e tests were removed on Sep 07, 2026 (decision above)
 - [x] `apps/api` (Hono + oRPC on Node 24) and `packages/contract` created early to fix the boundary: health, model catalogue with live prices, OpenAPI document. Narration stays in the browser with the device-owned key
 - [x] Writes are flushed to IndexedDB after every entry and the header shows saving/saved; a reload inside the Repo's save debounce used to lose the entry
 - [x] Unsent composer draft kept per campaign across reloads
-- [x] Sidebar: campaign list with create, switch and two-step delete; Settings entry; mock guest user. Icons via lucide-solid; contrast bug fixed (an unlayered rule in app.css beat every utility); title renames inline. Campaign list is a local registry (`campaign/library.ts`) until it becomes the account's list in Slice 11
+- [x] Animated hamburger + left drawer: campaign list with create, switch and two-step delete; Settings entry; mock guest user. Icons via lucide-solid; contrast bug fixed (an unlayered rule in app.css beat every utility); title renames inline. Campaign list is a local registry (`campaign/library.ts`) until it becomes the account's list in Slice 11
 - [x] Entries are editable and deletable in place (hover reveals edit/delete, Ctrl+Enter saves, delete confirms). Edits are Automerge text diffs, so concurrent edits merge; `editedAt` marks them. The AI's entries are editable too: the timeline is the player's
-- [ ] **Play:** one real session with the AI. Log it in `docs/playtests/slice-00.md`.
+- [ ] **Play:** one real session with the AI; capture only findings that change the plan.
 - Known gaps: key in plain localStorage; context is the last 40 entries; no meta channel; no undo (edits and deletes are final until the undo manager in Slice 4); no export; Vite dev needs Automerge excluded from pre-bundling (see `vite.config.ts`); ESLint's Solid rules are covered by Biome only until typescript-eslint supports TS 7.1
 
 ### Slice 1 - A sheet you can write
@@ -91,7 +89,7 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [ ] Sanitized rendering on every content path; external images blocked by default
 - [ ] (kernel) stable ids; Sheet shape: body, fields, refs, meta
 - [ ] (kernel) `sheet:<id>` Automerge document shape
-- [ ] **Play:** rewrite three characters and one location from a past campaign. Log what the editor cannot express.
+- [ ] **Play:** rewrite three characters and one location from a past campaign. Notice what the editor cannot express.
 
 ### Slice 2 - A campaign you will not lose
 - [x] Create, open, list campaigns; `campaign-index` document (done in Slice 0's sidebar; rename by clicking the title)
@@ -150,7 +148,7 @@ Moved ahead of cloud: this is where playing starts for real, and none of it need
 - [ ] Tools: read sheet, query index, list timeline; typed through the schema package
 - [ ] Strategic sheet querying: retrieval over the PGlite index, chunked by block, hybrid search; client-side embeddings **(bet)**
 - [ ] Prompt hygiene: untrusted content delimited, tool results parsed defensively
-- [ ] **Play:** one session where the AI answers from sheets it looked up itself. Log what it should have looked up and did not.
+- [ ] **Play:** one session where the AI answers from sheets it looked up itself. Notice what it should have looked up and did not.
 
 ### Slice 9 - The AI writes
 - [ ] Context model produces a typed plan; executor model emits operations through the pipeline
@@ -243,7 +241,6 @@ Nothing earlier may depend on a shell. The platform interface keeps the door ope
 ## Cross-cutting checklists
 
 ### Playtesting (every slice)
-- [ ] `docs/playtests/<slice>.md` written before the slice is called done
 - [ ] The fixture campaign updated with whatever the slice added
 - [ ] Every bug found in play has a test
 
@@ -263,7 +260,6 @@ Nothing earlier may depend on a shell. The platform interface keeps the door ope
 - [ ] Performance budgets: boot, large sheet open, long chat scroll
 
 ### Docs and ops
-- [ ] ADR per changed bet
 - [ ] Plugin SDK docs and a sample plugin
 - [ ] Terms, privacy, BYOK/provider terms notice, telemetry stance
 - [ ] Backups and restore drill for cloud data

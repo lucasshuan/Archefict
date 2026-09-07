@@ -1,3 +1,4 @@
+import type { ModelInfo } from "@archefict/contract";
 import { AiSettings } from "@archefict/schema";
 import Bot from "lucide-solid/icons/bot";
 import HardDrive from "lucide-solid/icons/hard-drive";
@@ -17,7 +18,8 @@ export function SettingsDialog(props: {
 }) {
   let dialog: HTMLDialogElement | undefined;
   const [apiKey, setApiKey] = createSignal(props.settings.apiKey);
-  const [model, setModel] = createSignal(props.settings.model);
+  const [narratorModel, setNarratorModel] = createSignal(props.settings.narratorModel);
+  const [backgroundModel, setBackgroundModel] = createSignal(props.settings.backgroundModel);
   const [systemPrompt, setSystemPrompt] = createSignal(props.settings.systemPrompt);
   const [problem, setProblem] = createSignal<string | null>(null);
   const [catalogue] = createResource(loadModels);
@@ -26,7 +28,8 @@ export function SettingsDialog(props: {
     if (!dialog) return;
     if (props.open) {
       setApiKey(props.settings.apiKey);
-      setModel(props.settings.model);
+      setNarratorModel(props.settings.narratorModel);
+      setBackgroundModel(props.settings.backgroundModel);
       setSystemPrompt(props.settings.systemPrompt);
       setProblem(null);
       if (!dialog.open) dialog.showModal();
@@ -36,12 +39,12 @@ export function SettingsDialog(props: {
   });
 
   const models = () => catalogue()?.models ?? FALLBACK_MODELS;
-  const selected = () => models().find((m) => m.id === model());
 
   function save(): void {
     const parsed = AiSettings.safeParse({
       apiKey: apiKey().trim(),
-      model: model().trim(),
+      narratorModel: narratorModel().trim(),
+      backgroundModel: backgroundModel().trim(),
       systemPrompt: systemPrompt(),
     });
     if (!parsed.success) {
@@ -54,7 +57,7 @@ export function SettingsDialog(props: {
   return (
     <dialog
       ref={dialog}
-      class="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-2xl bg-surface p-0 text-fg shadow-2xl"
+      class="m-auto max-h-[calc(100vh-2rem)] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl bg-surface p-0 text-fg shadow-2xl"
       onClose={() => props.onClose()}
       aria-label="Settings"
     >
@@ -96,41 +99,36 @@ export function SettingsDialog(props: {
           </span>
         </label>
 
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="flex items-center gap-2 text-fg-muted">
-            <Bot size={14} aria-hidden="true" />
-            Model
-            <Show when={catalogue()?.source === "fallback"}>
-              <span class="text-xs" title="The API is unreachable; showing the built-in list.">
-                (offline list)
-              </span>
-            </Show>
-          </span>
-          <input
-            list="archefict-models"
-            value={model()}
-            onInput={(event) => setModel(event.currentTarget.value)}
-            spellcheck={false}
-            class="rounded-xl bg-bg px-3 py-2 font-mono text-sm outline-none focus:ring-2 focus:ring-accent/50"
+        <fieldset class="flex flex-col gap-3">
+          <legend class="mb-1 text-sm text-fg-muted">
+            <span class="flex items-center gap-2">
+              <Bot size={14} aria-hidden="true" />
+              Models
+              <Show when={catalogue()?.source === "fallback"}>
+                <span class="text-xs" title="The API is unreachable; showing the built-in list.">
+                  (offline list)
+                </span>
+              </Show>
+            </span>
+          </legend>
+          <ModelAutocomplete
+            label="Narrator model"
+            description="Writes the player-facing narrative."
+            value={narratorModel()}
+            models={models()}
+            onInput={setNarratorModel}
+          />
+          <ModelAutocomplete
+            label="Background model"
+            description="Reserved for handoffs and campaign-state maintenance."
+            value={backgroundModel()}
+            models={models()}
+            onInput={setBackgroundModel}
           />
           <datalist id="archefict-models">
             <For each={models()}>{(m) => <option value={m.id}>{m.name}</option>}</For>
           </datalist>
-          <Show
-            when={selected()}
-            fallback={<span class="text-xs text-fg-muted">Any OpenRouter model id works.</span>}
-          >
-            {(m) => (
-              <span class="text-xs text-fg-muted">
-                {m().name}: ${m().pricing.input}/M in, ${m().pricing.output}/M out
-                <Show when={m().contextLength > 0}>
-                  , {Math.round(m().contextLength / 1000)}k context
-                </Show>
-                .
-              </span>
-            )}
-          </Show>
-        </label>
+        </fieldset>
 
         <label class="flex flex-col gap-1 text-sm">
           <span class="flex items-center gap-2 text-fg-muted">
@@ -181,5 +179,47 @@ export function SettingsDialog(props: {
         </div>
       </form>
     </dialog>
+  );
+}
+
+function ModelAutocomplete(props: {
+  label: string;
+  description: string;
+  value: string;
+  models: readonly ModelInfo[];
+  onInput: (value: string) => void;
+}) {
+  const selected = () => props.models.find((model) => model.id === props.value);
+
+  return (
+    <label class="flex flex-col gap-1 text-sm">
+      <span>{props.label}</span>
+      <input
+        list="archefict-models"
+        value={props.value}
+        onInput={(event) => props.onInput(event.currentTarget.value)}
+        spellcheck={false}
+        class="rounded-xl bg-bg px-3 py-2 font-mono text-sm outline-none focus:ring-2 focus:ring-accent/50"
+      />
+      <Show
+        when={selected()}
+        fallback={
+          <span class="text-xs text-fg-muted">
+            {props.description} Any OpenRouter model id works.
+          </span>
+        }
+      >
+        {(model) => (
+          <span class="text-xs text-fg-muted">
+            {props.description} {model().name}: ${model().pricing.input}/M in, $
+            {model().pricing.output}/M out
+            <Show when={model().contextLength > 0}>
+              , {Math.round(model().contextLength / 1000)}k context
+            </Show>
+            .
+          </span>
+        )}
+      </Show>
+    </label>
   );
 }

@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { ModelId, NarrativeEntry } from "./index.ts";
+import { AiSettings, ModelId, NarrativeEntry } from "./index.ts";
 
 const entryArb = fc.record({
   id: fc.uuid(),
@@ -50,5 +50,19 @@ describe("ModelId", () => {
 
   it("rejects ids without a provider", () => {
     expect(() => ModelId.parse("claude-haiku-4.5")).toThrow();
+  });
+});
+
+describe("AiSettings", () => {
+  it("keeps separate narrator and background models", () => {
+    const settings = AiSettings.parse({
+      apiKey: "",
+      narratorModel: "anthropic/claude-haiku-4.5",
+      backgroundModel: "openai/gpt-5-mini",
+      systemPrompt: "Narrate.",
+    });
+
+    expect(settings.narratorModel).toBe("anthropic/claude-haiku-4.5");
+    expect(settings.backgroundModel).toBe("openai/gpt-5-mini");
   });
 });

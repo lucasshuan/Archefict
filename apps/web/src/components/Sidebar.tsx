@@ -2,8 +2,7 @@ import BookOpen from "lucide-solid/icons/book-open";
 import Plus from "lucide-solid/icons/plus";
 import Settings from "lucide-solid/icons/settings";
 import Trash2 from "lucide-solid/icons/trash-2";
-import X from "lucide-solid/icons/x";
-import { createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, onCleanup } from "solid-js";
 import type { CampaignSummary } from "../campaign/store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { CreateCampaignDialog } from "./CreateCampaignDialog.tsx";
@@ -33,33 +32,43 @@ export function Sidebar(props: {
   const [creating, setCreating] = createSignal(false);
   const [pendingDelete, setPendingDelete] = createSignal<CampaignSummary | null>(null);
 
+  createEffect(() => {
+    if (!props.open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && document.querySelector("dialog[open]") === null) {
+        props.onClose();
+      }
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    onCleanup(() => document.removeEventListener("keydown", closeOnEscape));
+  });
+
   return (
     <>
-      <Show when={props.open}>
-        <button
-          type="button"
-          aria-label="Close menu"
-          class="fixed inset-0 z-10 bg-bg/70 md:hidden"
-          onClick={() => props.onClose()}
-        />
-      </Show>
+      <button
+        type="button"
+        aria-label="Close sidebar"
+        aria-hidden={!props.open}
+        tabIndex={-1}
+        class="fixed inset-0 z-10 bg-bg/70 backdrop-blur-[2px] transition-opacity duration-200 motion-reduce:transition-none"
+        classList={{
+          "opacity-100": props.open,
+          "pointer-events-none opacity-0": !props.open,
+        }}
+        onClick={() => props.onClose()}
+      />
       <aside
-        aria-label="Sidebar"
-        class="fixed inset-y-0 left-0 z-20 flex w-64 shrink-0 flex-col bg-surface transition-transform md:static md:translate-x-0"
+        id="campaign-drawer"
+        aria-label="Campaign sidebar"
+        aria-hidden={!props.open}
+        inert={!props.open}
+        class="fixed inset-y-0 left-0 z-20 flex w-64 shrink-0 flex-col bg-surface shadow-2xl transition-transform duration-200 ease-out motion-reduce:transition-none"
         classList={{ "-translate-x-full": !props.open }}
       >
-        <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center py-3 pl-14 pr-4">
           <span class="flex items-center gap-2 font-narrative text-lg tracking-wide">
             Archefict
           </span>
-          <button
-            type="button"
-            class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg md:hidden"
-            aria-label="Close menu"
-            onClick={() => props.onClose()}
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
         </div>
 
         <nav class="flex min-h-0 flex-1 flex-col px-2" aria-label="Campaigns">

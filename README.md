@@ -22,7 +22,7 @@ pnpm dev:web             # web only; the model list falls back to the built-in o
 
 Known issue: a global pnpm 10 tries to switch to the pinned version by itself and, on Windows, its generated launcher is broken ("is not recognized as an internal or external command"). Use one of the two options above. Git hooks already go through `corepack pnpm` for this reason.
 
-First run: open Settings, paste an OpenRouter API key, pick a model (default: Claude Haiku 4.5). Without a key the app still works as a local narrative log; you narrate both sides.
+First run: open Settings, paste an OpenRouter API key, and pick narrator/background models (both default to Claude Haiku 4.5). Without a key the app still works as a local narrative log; you narrate both sides.
 
 ## Check
 
@@ -35,9 +35,9 @@ pnpm check               # lint + typecheck + test
 
 The web app is verified by playing, not by tests, while its features are still moving. See `ARCHITECTURE.md`.
 
-## Playtest
+## Playing
 
-Every slice ends with a real session. Write what you played, what broke and what felt wrong in `docs/playtests/`, using the template there. The fixture campaign is the one in your own browser; export it before wiping storage (export arrives in Slice 2).
+Every slice ends with a real session. Keep the fixture campaign in your own browser and note only findings that change the roadmap or a bet. Export it before wiping storage (export arrives in Slice 2).
 
 ## API
 
@@ -62,7 +62,7 @@ packages/contract   The API contract; the server implements it, the client is ty
 packages/crdt       Automerge documents and the operations that touch them.
 packages/ai         Narration over OpenRouter through the AI SDK.
 packages/config     Shared tsconfig presets.
-docs/               Product, roadmap, stack review, playtests, ADRs.
+docs/               Product bets and architecture notes.
 ```
 
 Internal packages export TypeScript source directly; Vite, Vitest and Node consume it without a build step. Publishing (the plugin SDK, later) adds a build.

@@ -83,7 +83,7 @@ export function createTurnRunner(options: {
     try {
       const narration = streamNarration({
         apiKey: settings.apiKey,
-        model: settings.model,
+        model: settings.narratorModel,
         systemPrompt: settings.systemPrompt,
         entries: entriesOf(options.timeline),
         signal: controller.signal,
@@ -93,10 +93,10 @@ export function createTurnRunner(options: {
         setStreamingText(reply);
       }
       const usage = await narration.usage;
-      await commitReply(reply, { model: settings.model, turnId, usage });
+      await commitReply(reply, { model: settings.narratorModel, turnId, usage });
     } catch (caught) {
       if (controller.signal.aborted) {
-        await commitReply(reply, { model: settings.model, turnId });
+        await commitReply(reply, { model: settings.narratorModel, turnId });
       } else {
         setError(describe(caught));
       }
