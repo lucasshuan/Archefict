@@ -19,6 +19,16 @@ test("an entry is saved and survives a reload", async ({ page }) => {
   await expect(page.getByText("I open the door.")).toBeVisible();
 });
 
+test("an unsent draft survives a reload", async ({ page }) => {
+  await page.goto("/");
+  const box = page.getByRole("textbox", { name: "What do you do?" });
+  await box.fill("I start to say something and");
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: "What do you do?" })).toHaveValue(
+    "I start to say something and",
+  );
+});
+
 test("settings dialog opens, validates the model id, and saves", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Settings" }).click();

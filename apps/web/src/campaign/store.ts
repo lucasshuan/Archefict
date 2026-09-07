@@ -14,6 +14,9 @@ export async function loadOrCreateCampaign(repo: Repo): Promise<CampaignHandles>
     }
   }
   const handles = createCampaign(repo, "Untitled campaign");
+  // The new documents must reach storage before their URL is remembered, or a reload
+  // inside the Repo's save debounce finds a pointer to nothing and starts over.
+  await handles.flush();
   try {
     localStorage.setItem(INDEX_URL_KEY, handles.index.url);
   } catch {

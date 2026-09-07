@@ -88,6 +88,7 @@ function Session(props: { handles: CampaignHandles; persisted: boolean }) {
       <NarrativeFeed entries={timeline().entries} streamingText={turn.streamingText()} />
 
       <Composer
+        draftKey={props.handles.timeline.url}
         busy={turn.busy()}
         hasKey={settingsStore.settings().apiKey !== ""}
         error={turn.error()}

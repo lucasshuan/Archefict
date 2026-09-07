@@ -1,13 +1,18 @@
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, on, Show } from "solid-js";
+import { readDraft, writeDraft } from "../drafts.ts";
 
 export function Composer(props: {
+  /** Identifies the campaign whose unsent draft this composer keeps across reloads. */
+  draftKey: string;
   busy: boolean;
   hasKey: boolean;
   error: string | null;
   onSubmit: (text: string) => void;
   onStop: () => void;
 }) {
-  const [text, setText] = createSignal("");
+  const [text, setText] = createSignal(readDraft(props.draftKey));
+  // Persist every keystroke; a reload (ours or Vite's) must not eat a half-written turn.
+  createEffect(on(text, (value) => writeDraft(props.draftKey, value), { defer: true }));
 
   function send(): void {
     const value = text();
