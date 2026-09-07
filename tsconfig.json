@@ -1,9 +1,23 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/schema" },
-    { "path": "packages/crdt" },
-    { "path": "packages/ai" },
-    { "path": "apps/web" }
+    {
+      "path": "packages/schema"
+    },
+    {
+      "path": "packages/contract"
+    },
+    {
+      "path": "packages/crdt"
+    },
+    {
+      "path": "packages/ai"
+    },
+    {
+      "path": "apps/api"
+    },
+    {
+      "path": "apps/web"
+    }
   ]
 }

@@ -1,6 +1,6 @@
 import type { CampaignHandles } from "@archefict/crdt";
 import { createResource, createSignal, Show } from "solid-js";
-import { createTurnRunner } from "./ai/turn.ts";
+import { createTurnRunner, type SaveState } from "./ai/turn.ts";
 import { createDocSignal } from "./campaign/doc-signal.ts";
 import { createBrowserRepo } from "./campaign/repo.ts";
 import { loadOrCreateCampaign, requestPersistentStorage } from "./campaign/store.ts";
@@ -18,6 +18,19 @@ export function App() {
       {(handles) => <Session handles={handles()} persisted={persisted() ?? false} />}
     </Show>
   );
+}
+
+function saveLabel(state: SaveState): string {
+  switch (state) {
+    case "idle":
+      return "";
+    case "saving":
+      return "saving…";
+    case "saved":
+      return "saved";
+    case "failed":
+      return "not saved";
+  }
 }
 
 function Boot(props: { error: unknown }) {
@@ -40,6 +53,7 @@ function Session(props: { handles: CampaignHandles; persisted: boolean }) {
   const timeline = createDocSignal(props.handles.timeline);
   const turn = createTurnRunner({
     timeline: props.handles.timeline,
+    flush: props.handles.flush,
     settings: settingsStore.settings,
   });
   const [settingsOpen, setSettingsOpen] = createSignal(false);
@@ -54,6 +68,9 @@ function Session(props: { handles: CampaignHandles; persisted: boolean }) {
             title="Whether the browser promised not to evict this campaign's storage"
           >
             {props.persisted ? "storage: persistent" : "storage: best-effort"}
+          </span>
+          <span class="text-xs text-fg-muted" data-save-state={turn.saveState()}>
+            {saveLabel(turn.saveState())}
           </span>
         </div>
         <div class="flex items-center gap-3 text-xs text-fg-muted">

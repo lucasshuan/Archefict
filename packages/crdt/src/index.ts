@@ -27,6 +27,12 @@ export type CampaignIndexDoc = {
 export type CampaignHandles = {
   index: DocHandle<CampaignIndexDoc>;
   timeline: DocHandle<TimelineDoc>;
+  /**
+   * Resolves once every pending change to these documents has reached storage.
+   * The Repo saves on a debounce, so a change is not durable until this settles.
+   * Call it after every user-visible write; a reload inside the debounce window loses data.
+   */
+  flush: () => Promise<void>;
 };
 
 export function createCampaign(repo: Repo, name: string): CampaignHandles {
@@ -36,7 +42,7 @@ export function createCampaign(repo: Repo, name: string): CampaignHandles {
     timelineUrl: timeline.url,
     createdAt: Date.now(),
   });
-  return { index, timeline };
+  return withFlush(repo, index, timeline);
 }
 
 export async function openCampaign(repo: Repo, indexUrl: string): Promise<CampaignHandles> {
@@ -45,7 +51,19 @@ export async function openCampaign(repo: Repo, indexUrl: string): Promise<Campai
   }
   const index = await repo.find<CampaignIndexDoc>(indexUrl);
   const timeline = await repo.find<TimelineDoc>(index.doc().timelineUrl);
-  return { index, timeline };
+  return withFlush(repo, index, timeline);
+}
+
+function withFlush(
+  repo: Repo,
+  index: DocHandle<CampaignIndexDoc>,
+  timeline: DocHandle<TimelineDoc>,
+): CampaignHandles {
+  return {
+    index,
+    timeline,
+    flush: () => repo.flush([index.documentId, timeline.documentId]),
+  };
 }
 
 export type NewEntry = {

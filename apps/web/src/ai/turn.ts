@@ -4,11 +4,15 @@ import type { AiSettings } from "@archefict/schema";
 import type { DocHandle } from "@automerge/automerge-repo";
 import { type Accessor, createSignal } from "solid-js";
 
+export type SaveState = "idle" | "saving" | "saved" | "failed";
+
 export type TurnRunner = {
   /** Text of the reply being streamed, or null when idle. */
   streamingText: Accessor<string | null>;
   error: Accessor<string | null>;
   busy: Accessor<boolean>;
+  /** Whether the last write has reached storage. "saved" is the only durable state. */
+  saveState: Accessor<SaveState>;
   submit: (text: string) => Promise<void>;
   stop: () => void;
 };
@@ -19,14 +23,30 @@ export type TurnRunner = {
  * The reply is streamed into a signal, not into Automerge, and written to the document
  * once, when complete. Streaming token-by-token into a CRDT would bloat its history for no
  * benefit. The provenance carries the model, the turn id and token usage.
+ *
+ * Every write is followed by a flush. The Repo persists on a debounce, and a reload inside
+ * that window would lose the entry. "Saved" in the UI means the flush resolved.
  */
 export function createTurnRunner(options: {
   timeline: DocHandle<TimelineDoc>;
+  flush: () => Promise<void>;
   settings: Accessor<AiSettings>;
 }): TurnRunner {
   const [streamingText, setStreamingText] = createSignal<string | null>(null);
   const [error, setError] = createSignal<string | null>(null);
+  const [saveState, setSaveState] = createSignal<SaveState>("idle");
   let controller: AbortController | null = null;
+
+  async function persist(): Promise<void> {
+    setSaveState("saving");
+    try {
+      await options.flush();
+      setSaveState("saved");
+    } catch (caught) {
+      setSaveState("failed");
+      setError(`Could not save to local storage: ${describe(caught)}`);
+    }
+  }
 
   async function submit(text: string): Promise<void> {
     const trimmed = text.trim();
@@ -38,6 +58,7 @@ export function createTurnRunner(options: {
       options.timeline,
       createEntry({ kind: "user", text: trimmed, provenance: { source: "user", turnId } }),
     );
+    await persist();
 
     const settings = options.settings();
     if (settings.apiKey === "") return; // Manual mode: the player narrates both sides.
@@ -59,10 +80,10 @@ export function createTurnRunner(options: {
         setStreamingText(reply);
       }
       const usage = await narration.usage;
-      commitReply(reply, { model: settings.model, turnId, usage });
+      await commitReply(reply, { model: settings.model, turnId, usage });
     } catch (caught) {
       if (controller.signal.aborted) {
-        commitReply(reply, { model: settings.model, turnId });
+        await commitReply(reply, { model: settings.model, turnId });
       } else {
         setError(describe(caught));
       }
@@ -72,19 +93,20 @@ export function createTurnRunner(options: {
     }
   }
 
-  function commitReply(
+  async function commitReply(
     reply: string,
     provenance: {
       model: string;
       turnId: string;
       usage?: { inputTokens?: number; outputTokens?: number };
     },
-  ): void {
+  ): Promise<void> {
     if (reply.trim() === "") return;
     appendEntry(
       options.timeline,
       createEntry({ kind: "ai", text: reply, provenance: { source: "ai", ...provenance } }),
     );
+    await persist();
   }
 
   function stop(): void {
@@ -95,6 +117,7 @@ export function createTurnRunner(options: {
     streamingText,
     error,
     busy: () => streamingText() !== null,
+    saveState,
     submit,
     stop,
   };

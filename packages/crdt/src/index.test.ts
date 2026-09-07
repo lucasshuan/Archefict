@@ -13,7 +13,7 @@ describe("campaign documents", () => {
 
   it("appends entries in order and reopens them from the index url", async () => {
     const repo = new Repo();
-    const { index, timeline } = createCampaign(repo, "Reopen");
+    const { index, timeline, flush } = createCampaign(repo, "Reopen");
     const first = createEntry({
       kind: "user",
       text: "I open the door.",
@@ -26,6 +26,7 @@ describe("campaign documents", () => {
     });
     appendEntry(timeline, first);
     appendEntry(timeline, second);
+    await flush();
 
     const reopened = await openCampaign(repo, index.url);
     expect(entriesOf(reopened.timeline).map((e) => e.text)).toEqual([
@@ -33,6 +34,13 @@ describe("campaign documents", () => {
       "It creaks.",
     ]);
     expect(entriesOf(reopened.timeline)[1]?.provenance.model).toBe("anthropic/claude-haiku-4.5");
+  });
+
+  it("flush resolves even for an in-memory repo", async () => {
+    const repo = new Repo();
+    const { timeline, flush } = createCampaign(repo, "Flush");
+    appendEntry(timeline, createEntry({ kind: "user", text: "x", provenance: { source: "user" } }));
+    await expect(flush()).resolves.toBeUndefined();
   });
 
   it("rejects a non-automerge url", async () => {

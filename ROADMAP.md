@@ -76,8 +76,10 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [x] Settings: key, model (default Claude Haiku 4.5), narrator instructions
 - [x] (kernel) NarrativeEntry, Provenance, AiSettings schemas; `campaign-index` and `timeline:<id>` documents
 - [x] Tests: schema property test, CRDT round-trip, message mapping, Chromium component test, Playwright persistence + settings
+- [x] `apps/api` (Hono + oRPC on Node 24) and `packages/contract` created early to fix the boundary: health, model catalogue with live prices, OpenAPI document. Narration stays in the browser with the device-owned key
+- [x] Writes are flushed to IndexedDB after every entry and the header shows saving/saved; a reload inside the Repo's save debounce used to lose the entry
 - [ ] **Play:** one real session with the AI. Log it in `docs/playtests/slice-00.md`.
-- Known gaps: key in plain localStorage; context is the last 40 entries; no meta channel; no undo; no export; Vite dev needs Automerge excluded from pre-bundling (see `vite.config.ts`)
+- Known gaps: key in plain localStorage; context is the last 40 entries; no meta channel; no undo; no export; Vite dev needs Automerge excluded from pre-bundling (see `vite.config.ts`); ESLint's Solid rules are covered by Biome only until typescript-eslint supports TS 7.1
 
 ### Slice 1 - A sheet you can write
 - [ ] ProseMirror bound to Automerge; one sheet document persisted to IndexedDB **(bet)**

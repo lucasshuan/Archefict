@@ -1,4 +1,4 @@
 {
-  "extends": "@archefict/config/tsconfig.lib.json",
+  "extends": "../config/tsconfig.lib.json",
   "include": ["src"]
 }

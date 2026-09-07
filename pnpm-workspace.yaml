@@ -45,6 +45,14 @@ catalog:
   "@automerge/automerge-repo": 2.5.6
   "@automerge/automerge-repo-storage-indexeddb": 2.5.6
   "@automerge/automerge-repo-network-broadcastchannel": 2.5.6
+  # api
+  hono: 4.13.5
+  "@hono/node-server": 2.1.1
+  "@orpc/server": 1.15.0
+  "@orpc/client": 1.15.0
+  "@orpc/contract": 1.15.0
+  "@orpc/openapi": 1.15.0
+  "@orpc/zod": 1.15.0
   # ai
   ai: 7.0.92
   "@openrouter/ai-sdk-provider": 3.0.0

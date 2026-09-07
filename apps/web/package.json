@@ -13,12 +13,14 @@
   },
   "dependencies": {
     "@archefict/ai": "workspace:*",
+    "@archefict/contract": "workspace:*",
     "@archefict/crdt": "workspace:*",
     "@archefict/schema": "workspace:*",
     "@automerge/automerge": "catalog:",
     "@automerge/automerge-repo": "catalog:",
     "@automerge/automerge-repo-network-broadcastchannel": "catalog:",
     "@automerge/automerge-repo-storage-indexeddb": "catalog:",
+    "@orpc/client": "catalog:",
     "solid-js": "catalog:"
   },
   "devDependencies": {

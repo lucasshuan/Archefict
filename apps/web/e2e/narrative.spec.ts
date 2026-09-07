@@ -12,6 +12,8 @@ test("an entry is saved and survives a reload", async ({ page }) => {
   await box.press("Enter");
   await expect(page.getByText("I open the door.")).toBeVisible();
   await expect(box).toHaveValue("");
+  // The Repo persists on a debounce; "saved" means the flush reached IndexedDB.
+  await expect(page.getByText("saved", { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByText("I open the door.")).toBeVisible();

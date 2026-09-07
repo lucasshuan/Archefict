@@ -1,6 +1,6 @@
-import { SUGGESTED_MODELS } from "@archefict/ai";
 import { AiSettings } from "@archefict/schema";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createEffect, createResource, createSignal, For, Show } from "solid-js";
+import { FALLBACK_MODELS, loadModels } from "../api/models.ts";
 
 export function SettingsDialog(props: {
   open: boolean;
@@ -13,6 +13,7 @@ export function SettingsDialog(props: {
   const [model, setModel] = createSignal(props.settings.model);
   const [systemPrompt, setSystemPrompt] = createSignal(props.settings.systemPrompt);
   const [problem, setProblem] = createSignal<string | null>(null);
+  const [catalogue] = createResource(loadModels);
 
   createEffect(() => {
     if (!dialog) return;
@@ -27,7 +28,8 @@ export function SettingsDialog(props: {
     }
   });
 
-  const price = () => SUGGESTED_MODELS.find((m) => m.id === model());
+  const models = () => catalogue()?.models ?? FALLBACK_MODELS;
+  const selected = () => models().find((m) => m.id === model());
 
   function save(): void {
     const parsed = AiSettings.safeParse({
@@ -75,7 +77,15 @@ export function SettingsDialog(props: {
         </label>
 
         <label class="flex flex-col gap-1 text-sm">
-          <span class="text-fg-muted">Model</span>
+          <span class="text-fg-muted">
+            Model
+            <Show when={catalogue()?.source === "fallback"}>
+              <span title="The API is unreachable; showing the built-in list.">
+                {" "}
+                (offline list)
+              </span>
+            </Show>
+          </span>
           <input
             list="archefict-models"
             value={model()}
@@ -84,15 +94,19 @@ export function SettingsDialog(props: {
             class="rounded-app border border-border bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-accent"
           />
           <datalist id="archefict-models">
-            <For each={SUGGESTED_MODELS}>{(m) => <option value={m.id}>{m.label}</option>}</For>
+            <For each={models()}>{(m) => <option value={m.id}>{m.name}</option>}</For>
           </datalist>
           <Show
-            when={price()}
+            when={selected()}
             fallback={<span class="text-xs text-fg-muted">Any OpenRouter model id works.</span>}
           >
             {(m) => (
               <span class="text-xs text-fg-muted">
-                {m().label}: ${m().inputPerM}/M in, ${m().outputPerM}/M out.
+                {m().name}: ${m().pricing.input}/M in, ${m().pricing.output}/M out
+                <Show when={m().contextLength > 0}>
+                  , {Math.round(m().contextLength / 1000)}k context
+                </Show>
+                .
               </span>
             )}
           </Show>

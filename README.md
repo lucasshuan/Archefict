@@ -16,7 +16,8 @@ Then:
 
 ```sh
 pnpm install
-pnpm dev                 # http://localhost:5173
+pnpm dev                 # web on http://localhost:5173, api on http://127.0.0.1:8787
+pnpm dev:web             # web only; the model list falls back to the built-in one
 ```
 
 Known issue: a global pnpm 10 tries to switch to the pinned version by itself and, on Windows, its generated launcher is broken ("is not recognized as an internal or external command"). Use one of the two options above. Git hooks already go through `corepack pnpm` for this reason.
@@ -39,11 +40,26 @@ Component and end-to-end tests need a browser: `pnpm --filter @archefict/web exe
 
 Every slice ends with a real session. Write what you played, what broke and what felt wrong in `docs/playtests/`, using the template there. The fixture campaign is the one in your own browser; export it before wiping storage (export arrives in Slice 2).
 
+## API
+
+One contract in `packages/contract` (oRPC on Zod), implemented by `apps/api` (Hono on Node 24, run with Node's own type stripping, no build step). Three doors on the same server:
+
+```
+POST /api/rpc/*        typed client used by the web app
+GET  /api/health       plain HTTP, as declared by the contract
+GET  /api/models       chat models on OpenRouter with live prices, cached one hour
+GET  /api/openapi.json generated from the contract
+```
+
+The web app reaches it same-origin: Vite proxies `/api` in dev. The narration call itself does not go through the API. With a device-owned key the browser talks to OpenRouter directly and the server never sees the key.
+
 ## Layout
 
 ```
+apps/api            Hono + oRPC. Model catalogue today; auth, sync and managed AI later.
 apps/web            Vite + Solid SPA. Dark theme via semantic tokens in src/app.css.
 packages/schema     Zod shapes shared everywhere (entries, provenance, settings).
+packages/contract   The API contract; the server implements it, the client is typed from it.
 packages/crdt       Automerge documents and the operations that touch them.
 packages/ai         Narration over OpenRouter through the AI SDK.
 packages/config     Shared tsconfig presets.
