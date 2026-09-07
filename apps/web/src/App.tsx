@@ -11,10 +11,10 @@ import { createTimelineController, type SaveState } from "./campaign/timeline.ts
 import { Composer } from "./components/Composer.tsx";
 import { EditableTitle } from "./components/EditableTitle.tsx";
 import { NarrativeFeed } from "./components/NarrativeFeed.tsx";
-import { SettingsDialog } from "./components/SettingsDialog.tsx";
 import { GUEST, Sidebar } from "./components/Sidebar.tsx";
 import { SidebarToggle } from "./components/SidebarToggle.tsx";
-import { createSettingsStore, type SettingsStore } from "./settings.ts";
+import { SettingsPage } from "./settings/SettingsPage.tsx";
+import { createSettingsStore, type SettingsStore } from "./settings/store.ts";
 
 export function App() {
   const [library] = createResource(async () => openLibrary(createBrowserRepo()));
@@ -68,22 +68,20 @@ function Shell(props: { library: Library; persisted: boolean }) {
           <Session
             handles={handles}
             settings={settingsStore}
-            drawerOpen={sidebarOpen()}
+            blocked={sidebarOpen() || settingsOpen()}
             onRename={(name) => void props.library.rename(name)}
           />
         )}
       </Show>
 
-      <SettingsDialog
-        open={settingsOpen()}
-        settings={settingsStore.settings()}
-        persisted={props.persisted}
-        onSave={(next) => {
-          settingsStore.save(next);
-          setSettingsOpen(false);
-        }}
-        onClose={() => setSettingsOpen(false)}
-      />
+      <Show when={settingsOpen()}>
+        <SettingsPage
+          settings={settingsStore.settings()}
+          persisted={props.persisted}
+          onSave={(next) => settingsStore.save(next)}
+          onClose={() => setSettingsOpen(false)}
+        />
+      </Show>
     </div>
   );
 }
@@ -91,7 +89,8 @@ function Shell(props: { library: Library; persisted: boolean }) {
 function Session(props: {
   handles: CampaignHandles;
   settings: SettingsStore;
-  drawerOpen: boolean;
+  /** The drawer or the settings page is covering the session: no input, no shortcuts. */
+  blocked: boolean;
   onRename: (name: string) => void;
 }) {
   const index = createDocSignal(props.handles.index);
@@ -105,7 +104,9 @@ function Session(props: {
 
   onMount(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.altKey || turn.busy()) return;
+      if (props.blocked || !(event.ctrlKey || event.metaKey) || event.altKey || turn.busy()) {
+        return;
+      }
       // Inputs keep their own native undo; only the timeline responds outside them.
       const target = event.target;
       if (
@@ -128,7 +129,7 @@ function Session(props: {
   });
 
   return (
-    <main class="flex min-w-0 flex-1 flex-col" inert={props.drawerOpen}>
+    <main class="flex min-w-0 flex-1 flex-col" inert={props.blocked}>
       <header class="flex items-center gap-2 py-3 pl-14 pr-4">
         <EditableTitle value={index().name} onCommit={props.onRename} />
         <SaveIndicator state={timeline.saveState()} />
