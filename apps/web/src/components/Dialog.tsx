@@ -26,7 +26,7 @@ export function Dialog(props: {
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape already closes a native <dialog>; the click handler only maps backdrop clicks to onClose.
     <dialog
       ref={dialog}
-      class="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-app border border-border bg-surface p-0 text-fg"
+      class="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl bg-surface p-0 text-fg shadow-2xl"
       aria-label={props.title}
       onClose={() => props.onClose()}
       onClick={(event) => {

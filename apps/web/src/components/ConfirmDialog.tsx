@@ -24,7 +24,7 @@ export function ConfirmDialog(props: {
         <button
           ref={cancel}
           type="button"
-          class="rounded-app border border-border px-3 py-1 hover:bg-surface-raised"
+          class="rounded-app bg-surface-raised px-3 py-1 hover:opacity-80"
           onClick={() => props.onClose()}
         >
           Cancel

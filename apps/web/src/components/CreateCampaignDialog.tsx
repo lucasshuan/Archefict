@@ -33,13 +33,13 @@ export function CreateCampaignDialog(props: {
             value={name()}
             placeholder="Untitled campaign"
             onInput={(event) => setName(event.currentTarget.value)}
-            class="rounded-app border border-border bg-bg px-3 py-2 outline-none focus:border-accent"
+            class="rounded-xl bg-bg px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50"
           />
         </label>
         <div class="flex justify-end gap-2">
           <button
             type="button"
-            class="rounded-app border border-border px-3 py-1 hover:bg-surface-raised"
+            class="rounded-app bg-surface-raised px-3 py-1 hover:opacity-80"
             onClick={() => props.onClose()}
           >
             Cancel

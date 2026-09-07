@@ -36,10 +36,14 @@ export function EntryView(props: {
 
   return (
     <article
-      class="group relative rounded-app px-4 py-3"
+      class="group relative"
       classList={{
-        "bg-surface border border-border": props.entry.kind === "user",
-        "border border-accent": editing(),
+        "self-end max-w-[85%]": props.entry.kind === "user" && !editing(),
+        "w-full": editing(),
+        "rounded-2xl rounded-br-md bg-surface-raised px-4 py-3": props.entry.kind === "user",
+        "rounded-2xl bg-surface px-4 py-3": editing() && props.entry.kind !== "user",
+        "ring-2 ring-accent/50": editing(),
+        "px-1 py-2": props.entry.kind !== "user" && !editing(),
         "font-narrative text-[1.05rem] leading-relaxed": props.entry.kind === "ai",
         "text-fg-muted text-sm italic": props.entry.kind === "system",
       }}
@@ -65,10 +69,19 @@ export function EntryView(props: {
       </Show>
 
       <Show when={editable() && !editing()}>
-        <div class="absolute top-1.5 right-1.5 flex gap-0.5 rounded-app bg-surface-raised p-0.5 opacity-0 shadow transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+        <div
+          class="flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+          classList={{
+            // Outside the bubble, so it never covers a short message.
+            "absolute top-1/2 right-full mr-2 -translate-y-1/2 rounded-lg bg-surface p-0.5 shadow-md":
+              props.entry.kind === "user",
+            // Narrator text is full width: the row below it is reserved, so nothing shifts.
+            "mt-1 h-6": props.entry.kind !== "user",
+          }}
+        >
           <button
             type="button"
-            class="rounded-app p-1 text-fg-muted hover:bg-bg hover:text-fg"
+            class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg"
             aria-label="Edit entry"
             title="Edit"
             onClick={start}
@@ -77,7 +90,7 @@ export function EntryView(props: {
           </button>
           <button
             type="button"
-            class="rounded-app p-1 text-fg-muted hover:bg-bg hover:text-danger"
+            class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-danger"
             aria-label="Delete entry"
             title="Delete"
             onClick={() => props.onDelete?.()}
@@ -132,7 +145,7 @@ function EditBox(props: {
         <span class="mr-auto text-fg-muted">Ctrl+Enter to save, Escape to cancel.</span>
         <button
           type="button"
-          class="inline-flex items-center gap-1 rounded-app border border-border px-2 py-1 text-fg hover:bg-surface-raised"
+          class="inline-flex items-center gap-1 rounded-app bg-bg px-2 py-1 text-fg hover:opacity-80"
           onClick={() => props.onCancel()}
         >
           <X size={14} aria-hidden="true" />

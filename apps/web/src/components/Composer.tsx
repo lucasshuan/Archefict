@@ -53,7 +53,7 @@ export function Composer(props: {
           )}
         </Show>
 
-        <div class="flex items-end gap-2 rounded-2xl border border-border bg-surface py-2 pr-2 pl-4 shadow-lg transition-colors focus-within:border-accent">
+        <div class="flex items-end gap-2 rounded-3xl bg-surface py-2 pr-2 pl-5 shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-accent/40">
           <textarea
             ref={textarea}
             aria-label="What do you do?"
@@ -88,7 +88,7 @@ export function Composer(props: {
               type="button"
               aria-label="Stop"
               title="Stop"
-              class="shrink-0 rounded-full border border-border p-2 text-fg-muted hover:bg-surface-raised hover:text-fg"
+              class="shrink-0 rounded-full bg-surface-raised p-2 text-fg-muted hover:text-fg"
               onClick={() => props.onStop()}
             >
               <Square size={14} aria-hidden="true" />

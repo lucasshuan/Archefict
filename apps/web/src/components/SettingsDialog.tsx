@@ -54,7 +54,7 @@ export function SettingsDialog(props: {
   return (
     <dialog
       ref={dialog}
-      class="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-app border border-border bg-surface p-0 text-fg"
+      class="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-2xl bg-surface p-0 text-fg shadow-2xl"
       onClose={() => props.onClose()}
       aria-label="Settings"
     >
@@ -89,7 +89,7 @@ export function SettingsDialog(props: {
             value={apiKey()}
             onInput={(event) => setApiKey(event.currentTarget.value)}
             placeholder="sk-or-…"
-            class="rounded-app border border-border bg-bg px-3 py-2 outline-none focus:border-accent"
+            class="rounded-xl bg-bg px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50"
           />
           <span class="text-xs text-fg-muted">
             Stored only in this browser. Calls go straight from here to OpenRouter.
@@ -111,7 +111,7 @@ export function SettingsDialog(props: {
             value={model()}
             onInput={(event) => setModel(event.currentTarget.value)}
             spellcheck={false}
-            class="rounded-app border border-border bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-accent"
+            class="rounded-xl bg-bg px-3 py-2 font-mono text-sm outline-none focus:ring-2 focus:ring-accent/50"
           />
           <datalist id="archefict-models">
             <For each={models()}>{(m) => <option value={m.id}>{m.name}</option>}</For>
@@ -141,7 +141,7 @@ export function SettingsDialog(props: {
             rows={6}
             value={systemPrompt()}
             onInput={(event) => setSystemPrompt(event.currentTarget.value)}
-            class="resize-y rounded-app border border-border bg-bg px-3 py-2 outline-none focus:border-accent"
+            class="resize-y rounded-xl bg-bg px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50"
           />
         </label>
 
@@ -153,7 +153,7 @@ export function SettingsDialog(props: {
           )}
         </Show>
 
-        <div class="flex items-center justify-between gap-3 border-t border-border pt-4">
+        <div class="flex items-center justify-between gap-3 pt-1">
           <span
             class="flex items-center gap-2 text-xs text-fg-muted"
             title="Whether the browser promised not to evict this campaign's storage"
@@ -166,7 +166,7 @@ export function SettingsDialog(props: {
           <span class="flex gap-2">
             <button
               type="button"
-              class="rounded-app border border-border px-3 py-1 hover:bg-surface-raised"
+              class="rounded-app bg-surface-raised px-3 py-1 hover:opacity-80"
               onClick={() => props.onClose()}
             >
               Cancel

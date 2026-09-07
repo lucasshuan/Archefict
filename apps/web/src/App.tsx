@@ -102,7 +102,7 @@ function Session(props: {
 
   return (
     <main class="flex min-w-0 flex-1 flex-col">
-      <header class="flex items-center gap-2 border-b border-border bg-surface px-3 py-2">
+      <header class="flex items-center gap-2 px-4 py-3">
         <button
           type="button"
           class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg md:hidden"

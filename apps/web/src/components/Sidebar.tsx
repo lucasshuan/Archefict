@@ -45,7 +45,7 @@ export function Sidebar(props: {
       </Show>
       <aside
         aria-label="Sidebar"
-        class="fixed inset-y-0 left-0 z-20 flex w-64 shrink-0 flex-col border-r border-border bg-surface transition-transform md:static md:translate-x-0"
+        class="fixed inset-y-0 left-0 z-20 flex w-64 shrink-0 flex-col bg-surface transition-transform md:static md:translate-x-0"
         classList={{ "-translate-x-full": !props.open }}
       >
         <div class="flex items-center justify-between px-4 py-3">
@@ -83,7 +83,7 @@ export function Sidebar(props: {
                 const active = () => campaign.url === props.activeUrl;
                 return (
                   <li
-                    class="group flex items-center rounded-app"
+                    class="group flex items-center rounded-xl"
                     classList={{ "bg-surface-raised": active() }}
                   >
                     <button
@@ -124,7 +124,7 @@ export function Sidebar(props: {
           </ul>
         </nav>
 
-        <div class="border-t border-border p-2">
+        <div class="p-2">
           <button
             type="button"
             class="flex w-full items-center gap-2 rounded-app px-2 py-1.5 text-left text-sm text-fg-muted hover:bg-surface-raised hover:text-fg"

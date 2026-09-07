@@ -65,7 +65,7 @@ export function EditableTitle(props: { value: string; onCommit: (next: string) =
           }
         }}
         onBlur={commit}
-        class="min-w-0 max-w-md flex-1 rounded-app border border-accent bg-bg px-2 py-1 text-base font-semibold tracking-wide outline-none"
+        class="min-w-0 max-w-md flex-1 rounded-app bg-surface-raised px-2 py-1 ring-2 ring-accent/50 text-base font-semibold tracking-wide outline-none"
       />
     </Show>
   );

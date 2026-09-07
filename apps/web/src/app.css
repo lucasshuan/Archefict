@@ -22,7 +22,7 @@
   --danger-fg: oklch(0.98 0.01 25);
   --accent-muted: oklch(0.78 0.13 70 / 0.14);
 
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-narrative: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 }
@@ -92,5 +92,6 @@ body {
 }
 
 dialog::backdrop {
-  background: oklch(0 0 0 / 0.6);
+  background: oklch(0 0 0 / 0.55);
+  backdrop-filter: blur(3px);
 }
