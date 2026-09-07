@@ -272,12 +272,12 @@ function FieldLabel(props: {
       >
         <Info size={13} aria-hidden="true" />
       </button>
-      {/* Below the label, not above: the panel scrolls, and a tooltip above the first
-          field would be clipped by it. Never hit-testable, so it cannot block a click. */}
+      {/* Beside the badge, so it never covers the control it describes and the scrolling
+          panel cannot clip it. Never hit-testable, so it cannot block a click. */}
       <span
         id={tip}
         role="tooltip"
-        class="pointer-events-none absolute top-full left-0 z-10 mt-1.5 w-64 rounded-lg bg-surface-raised px-2.5 py-1.5 text-xs text-fg opacity-0 shadow-lg transition-opacity group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 motion-reduce:transition-none"
+        class="pointer-events-none absolute top-1/2 left-full z-10 ml-2 w-64 max-w-[calc(100vw-2rem)] -translate-y-1/2 rounded-lg bg-surface-raised px-2.5 py-1.5 text-xs text-fg opacity-0 shadow-lg transition-opacity group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 motion-reduce:transition-none"
       >
         {props.hint}
       </span>
