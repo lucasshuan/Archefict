@@ -22,7 +22,7 @@ pnpm dev:web             # web only; the model list falls back to the built-in o
 
 Known issue: a global pnpm 10 tries to switch to the pinned version by itself and, on Windows, its generated launcher is broken ("is not recognized as an internal or external command"). Use one of the two options above. Git hooks already go through `corepack pnpm` for this reason.
 
-First run: open Settings, paste an OpenRouter API key, and pick narrator/background models (both default to Claude Haiku 4.5). Without a key the app still works as a local narrative log; you narrate both sides.
+First run: open Settings, paste an OpenRouter API key, and pick a narrator model (default: Claude Haiku 4.5). Without a key the app still works as a local narrative log; you narrate both sides.
 
 ## Check
 

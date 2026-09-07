@@ -71,7 +71,7 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [x] Narrative feed + composer; entries render sanitized Markdown and persist their editable source to IndexedDB through Automerge Repo; tabs sync over BroadcastChannel
 - [x] Storage persistence request, result shown in the header
 - [x] OpenRouter narration through the AI SDK with a device-held key; the streamed reply is written to the document once, with model, turn id and token usage in provenance
-- [x] Settings: key, separate narrator and background model autocompletes (both default Claude Haiku 4.5), narrator instructions; the background model is reserved until handoff execution lands
+- [x] Settings: key, narrator model autocomplete (default Claude Haiku 4.5), narrator instructions. A second model is not configured: the bets doc replaced the executor handoff with deterministic writes, and any worldbuilder model comes back only when that bet is spiked
 - [x] (kernel) NarrativeEntry, Provenance, AiSettings schemas; `campaign-index` and `timeline:<id>` documents
 - [x] Tests: schema property test, CRDT round-trip, message mapping, API. Web component and e2e tests were removed on Sep 07, 2026 (decision above)
 - [x] `apps/api` (Hono + oRPC on Node 24) and `packages/contract` created early to fix the boundary: health, model catalogue with live prices, OpenAPI document. Narration stays in the browser with the device-owned key

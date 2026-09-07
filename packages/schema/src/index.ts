@@ -106,7 +106,6 @@ export type ModelId = z.infer<typeof ModelId>;
 export const AiSettings = z.object({
   apiKey: z.string().default(""),
   narratorModel: ModelId,
-  backgroundModel: ModelId,
   systemPrompt: z.string(),
 });
 export type AiSettings = z.infer<typeof AiSettings>;

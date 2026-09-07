@@ -19,7 +19,6 @@ export function SettingsDialog(props: {
   let dialog: HTMLDialogElement | undefined;
   const [apiKey, setApiKey] = createSignal(props.settings.apiKey);
   const [narratorModel, setNarratorModel] = createSignal(props.settings.narratorModel);
-  const [backgroundModel, setBackgroundModel] = createSignal(props.settings.backgroundModel);
   const [systemPrompt, setSystemPrompt] = createSignal(props.settings.systemPrompt);
   const [problem, setProblem] = createSignal<string | null>(null);
   const [catalogue] = createResource(loadModels);
@@ -29,7 +28,6 @@ export function SettingsDialog(props: {
     if (props.open) {
       setApiKey(props.settings.apiKey);
       setNarratorModel(props.settings.narratorModel);
-      setBackgroundModel(props.settings.backgroundModel);
       setSystemPrompt(props.settings.systemPrompt);
       setProblem(null);
       if (!dialog.open) dialog.showModal();
@@ -44,7 +42,6 @@ export function SettingsDialog(props: {
     const parsed = AiSettings.safeParse({
       apiKey: apiKey().trim(),
       narratorModel: narratorModel().trim(),
-      backgroundModel: backgroundModel().trim(),
       systemPrompt: systemPrompt(),
     });
     if (!parsed.success) {
@@ -99,18 +96,16 @@ export function SettingsDialog(props: {
           </span>
         </label>
 
-        <fieldset class="flex flex-col gap-3">
-          <legend class="mb-1 text-sm text-fg-muted">
-            <span class="flex items-center gap-2">
-              <Bot size={14} aria-hidden="true" />
-              Models
-              <Show when={catalogue()?.source === "fallback"}>
-                <span class="text-xs" title="The API is unreachable; showing the built-in list.">
-                  (offline list)
-                </span>
-              </Show>
-            </span>
-          </legend>
+        <div class="flex flex-col gap-1">
+          <span class="flex items-center gap-2 text-sm text-fg-muted">
+            <Bot size={14} aria-hidden="true" />
+            Narrator model
+            <Show when={catalogue()?.source === "fallback"}>
+              <span class="text-xs" title="The API is unreachable; showing the built-in list.">
+                (offline list)
+              </span>
+            </Show>
+          </span>
           <ModelAutocomplete
             label="Narrator model"
             description="Writes the player-facing narrative."
@@ -118,17 +113,10 @@ export function SettingsDialog(props: {
             models={models()}
             onInput={setNarratorModel}
           />
-          <ModelAutocomplete
-            label="Background model"
-            description="Reserved for handoffs and campaign-state maintenance."
-            value={backgroundModel()}
-            models={models()}
-            onInput={setBackgroundModel}
-          />
           <datalist id="archefict-models">
             <For each={models()}>{(m) => <option value={m.id}>{m.name}</option>}</For>
           </datalist>
-        </fieldset>
+        </div>
 
         <label class="flex flex-col gap-1 text-sm">
           <span class="flex items-center gap-2 text-fg-muted">
@@ -193,7 +181,7 @@ function ModelAutocomplete(props: {
 
   return (
     <label class="flex flex-col gap-1 text-sm">
-      <span>{props.label}</span>
+      <span class="sr-only">{props.label}</span>
       <input
         list="archefict-models"
         value={props.value}

@@ -54,7 +54,7 @@ describe("ModelId", () => {
 });
 
 describe("AiSettings", () => {
-  it("keeps separate narrator and background models", () => {
+  it("parses a settings record and drops fields it no longer knows", () => {
     const settings = AiSettings.parse({
       apiKey: "",
       narratorModel: "anthropic/claude-haiku-4.5",
@@ -63,6 +63,15 @@ describe("AiSettings", () => {
     });
 
     expect(settings.narratorModel).toBe("anthropic/claude-haiku-4.5");
-    expect(settings.backgroundModel).toBe("openai/gpt-5-mini");
+    expect(settings).not.toHaveProperty("backgroundModel");
+  });
+
+  it("rejects a model id without a provider", () => {
+    const result = AiSettings.safeParse({
+      apiKey: "",
+      narratorModel: "claude-haiku-4.5",
+      systemPrompt: "Narrate.",
+    });
+    expect(result.success).toBe(false);
   });
 });

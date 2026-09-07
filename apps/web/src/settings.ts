@@ -10,7 +10,6 @@ Never act for the player. Keep replies to a few paragraphs. End on something the
 export const DEFAULT_SETTINGS: AiSettings = {
   apiKey: "",
   narratorModel: DEFAULT_MODEL,
-  backgroundModel: DEFAULT_MODEL,
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
 };
 
@@ -63,15 +62,16 @@ function load(): AiSettings {
   }
 }
 
+/**
+ * Settings stored before the field was renamed still say `model`. Anything the schema no
+ * longer knows, such as the old `backgroundModel`, is dropped when it parses.
+ */
 function migrateModelSettings(value: unknown): unknown {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
   const next = { ...(value as Record<string, unknown>) };
 
   if (typeof next["narratorModel"] !== "string" && typeof next["model"] === "string") {
     next["narratorModel"] = next["model"];
-  }
-  if (typeof next["backgroundModel"] !== "string" && typeof next["narratorModel"] === "string") {
-    next["backgroundModel"] = next["narratorModel"];
   }
 
   return next;
