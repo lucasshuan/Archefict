@@ -161,6 +161,9 @@ catalogs:
     lefthook:
       specifier: 2.1.12
       version: 2.1.12
+    lucide-solid:
+      specifier: 1.39.0
+      version: 1.39.0
     solid-js:
       specifier: 1.9.15
       version: 1.9.15
@@ -272,6 +275,9 @@ importers:
       '@orpc/client':
         specifier: 'catalog:'
         version: 1.15.0
+      lucide-solid:
+        specifier: 'catalog:'
+        version: 1.39.0(solid-js@1.9.15)
       solid-js:
         specifier: 'catalog:'
         version: 1.9.15
@@ -1514,6 +1520,11 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
+
+  lucide-solid@1.39.0:
+    resolution: {integrity: sha512-VzirW3UhljViBu4JCOgge/kz6PRu/+c/6p5jW6DzRlKjfKKg1YjWemnw54xTUGQNgPFF+GLnNYHsHKsnXy9wsQ==}
+    peerDependencies:
+      solid-js: ^1.4.7
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -2882,6 +2893,10 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lucide-solid@1.39.0(solid-js@1.9.15):
+    dependencies:
+      solid-js: 1.9.15
 
   magic-string@0.30.21:
     dependencies:

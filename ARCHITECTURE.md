@@ -46,6 +46,8 @@ src/<feature>/     a feature that owns state and UI gets a folder (later: sheets
 - The session is keyed by campaign. Switching remounts it. Per-campaign state lives inside `Session`.
 - Styling: Tailwind utilities on semantic tokens only (`bg-surface`, `text-fg-muted`). The palette is removed; `bg-zinc-900` does not compile. Cursors and other interaction defaults come from the base layer, never per element.
 - Dark is the theme. The tokens are the future plugin theming API.
+- Icons are lucide-solid, imported one at a time (`lucide-solid/icons/<name>`), never from the package root. Decorative icons carry `aria-hidden`; icon-only buttons carry `aria-label`.
+- Text on a colored background uses that color's `-fg` token (`text-accent-fg`, `text-danger-fg`). No unlayered CSS in `app.css`: it outranks every utility.
 - Every API call may fail. The app works with the server down. Same-origin `/api`, proxied by Vite in dev.
 - The provider key stays on the device. It is never sent to our API.
 - Vite: Automerge is excluded from pre-bundling; dependencies reached only through linked packages are listed in `optimizeDeps.include`.

@@ -79,7 +79,7 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [x] `apps/api` (Hono + oRPC on Node 24) and `packages/contract` created early to fix the boundary: health, model catalogue with live prices, OpenAPI document. Narration stays in the browser with the device-owned key
 - [x] Writes are flushed to IndexedDB after every entry and the header shows saving/saved; a reload inside the Repo's save debounce used to lose the entry
 - [x] Unsent composer draft kept per campaign across reloads
-- [x] Sidebar: campaign list with create, switch and two-step delete; Settings entry; mock guest user. Campaign list is a local registry (`campaign/library.ts`) until it becomes the account's list in Slice 11
+- [x] Sidebar: campaign list with create, switch and two-step delete; Settings entry; mock guest user. Icons via lucide-solid; contrast bug fixed (an unlayered rule in app.css beat every utility); title renames inline. Campaign list is a local registry (`campaign/library.ts`) until it becomes the account's list in Slice 11
 - [ ] **Play:** one real session with the AI. Log it in `docs/playtests/slice-00.md`.
 - Known gaps: key in plain localStorage; context is the last 40 entries; no meta channel; no undo; no export; Vite dev needs Automerge excluded from pre-bundling (see `vite.config.ts`); ESLint's Solid rules are covered by Biome only until typescript-eslint supports TS 7.1
 
@@ -93,7 +93,7 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [ ] **Play:** rewrite three characters and one location from a past campaign. Log what the editor cannot express.
 
 ### Slice 2 - A campaign you will not lose
-- [x] Create, open, list campaigns; `campaign-index` document (done in Slice 0's sidebar; rename still missing)
+- [x] Create, open, list campaigns; `campaign-index` document (done in Slice 0's sidebar; rename by clicking the title)
 - [ ] Storage persistence request; loud durability warning on local campaign creation
 - [ ] Automatic file backups; "last backed up" indicator
 - [ ] Campaign bundle export and import (documents + assets + manifest)

@@ -1,4 +1,9 @@
-import { type CampaignHandles, createCampaign, openCampaign } from "@archefict/crdt";
+import {
+  type CampaignHandles,
+  createCampaign,
+  openCampaign,
+  renameCampaign,
+} from "@archefict/crdt";
 import type { AutomergeUrl, Repo } from "@automerge/automerge-repo";
 import { type Accessor, createSignal } from "solid-js";
 import { writeDraft } from "../drafts.ts";
@@ -17,6 +22,8 @@ export type Library = {
   select: (url: string) => void;
   create: (name: string) => Promise<void>;
   remove: (url: string) => Promise<void>;
+  /** Renames the open campaign. Blank names are ignored. */
+  rename: (name: string) => Promise<void>;
 };
 
 const DEFAULT_NAME = "Untitled campaign";
@@ -111,7 +118,15 @@ export async function openLibrary(repo: Repo): Promise<Library> {
     if (record.campaigns.length === 0) await create(DEFAULT_NAME);
   }
 
-  return { campaigns, active, select, create, remove };
+  async function rename(name: string): Promise<void> {
+    const handles = active();
+    if (!handles) return;
+    renameCampaign(handles.index, name);
+    await handles.flush();
+    setCampaigns(summaries());
+  }
+
+  return { campaigns, active, select, create, remove, rename };
 }
 
 /** New documents must reach storage before anyone remembers their URL (save debounce). */

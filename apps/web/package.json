@@ -19,6 +19,7 @@
     "@automerge/automerge-repo-network-broadcastchannel": "catalog:",
     "@automerge/automerge-repo-storage-indexeddb": "catalog:",
     "@orpc/client": "catalog:",
+    "lucide-solid": "catalog:",
     "solid-js": "catalog:"
   },
   "devDependencies": {

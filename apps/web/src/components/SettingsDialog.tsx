@@ -1,10 +1,17 @@
 import { AiSettings } from "@archefict/schema";
+import Bot from "lucide-solid/icons/bot";
+import HardDrive from "lucide-solid/icons/hard-drive";
+import KeyRound from "lucide-solid/icons/key-round";
+import ScrollText from "lucide-solid/icons/scroll-text";
+import X from "lucide-solid/icons/x";
 import { createEffect, createResource, createSignal, For, Show } from "solid-js";
 import { FALLBACK_MODELS, loadModels } from "../api/models.ts";
 
 export function SettingsDialog(props: {
   open: boolean;
   settings: AiSettings;
+  /** Whether the browser promised not to evict this origin's storage. */
+  persisted: boolean;
   onSave: (next: AiSettings) => void;
   onClose: () => void;
 }) {
@@ -53,16 +60,29 @@ export function SettingsDialog(props: {
     >
       <form
         method="dialog"
-        class="flex flex-col gap-4 p-5"
+        class="flex flex-col gap-5 p-5"
         onSubmit={(event) => {
           event.preventDefault();
           save();
         }}
       >
-        <h2 class="text-lg font-semibold">Settings</h2>
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold">Settings</h2>
+          <button
+            type="button"
+            class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg"
+            aria-label="Close"
+            onClick={() => props.onClose()}
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
 
         <label class="flex flex-col gap-1 text-sm">
-          <span class="text-fg-muted">OpenRouter API key</span>
+          <span class="flex items-center gap-2 text-fg-muted">
+            <KeyRound size={14} aria-hidden="true" />
+            OpenRouter API key
+          </span>
           <input
             type="password"
             autocomplete="off"
@@ -77,11 +97,11 @@ export function SettingsDialog(props: {
         </label>
 
         <label class="flex flex-col gap-1 text-sm">
-          <span class="text-fg-muted">
+          <span class="flex items-center gap-2 text-fg-muted">
+            <Bot size={14} aria-hidden="true" />
             Model
             <Show when={catalogue()?.source === "fallback"}>
-              <span title="The API is unreachable; showing the built-in list.">
-                {" "}
+              <span class="text-xs" title="The API is unreachable; showing the built-in list.">
                 (offline list)
               </span>
             </Show>
@@ -113,7 +133,10 @@ export function SettingsDialog(props: {
         </label>
 
         <label class="flex flex-col gap-1 text-sm">
-          <span class="text-fg-muted">Narrator instructions</span>
+          <span class="flex items-center gap-2 text-fg-muted">
+            <ScrollText size={14} aria-hidden="true" />
+            Narrator instructions
+          </span>
           <textarea
             rows={6}
             value={systemPrompt()}
@@ -130,20 +153,31 @@ export function SettingsDialog(props: {
           )}
         </Show>
 
-        <div class="flex justify-end gap-2">
-          <button
-            type="button"
-            class="rounded-app border border-border px-3 py-1 hover:bg-surface-raised"
-            onClick={() => props.onClose()}
+        <div class="flex items-center justify-between gap-3 border-t border-border pt-4">
+          <span
+            class="flex items-center gap-2 text-xs text-fg-muted"
+            title="Whether the browser promised not to evict this campaign's storage"
           >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="rounded-app bg-accent px-3 py-1 font-medium text-accent-fg hover:opacity-90"
-          >
-            Save
-          </button>
+            <HardDrive size={14} aria-hidden="true" />
+            {props.persisted
+              ? "Storage: persistent"
+              : "Storage: best-effort, the browser may evict it"}
+          </span>
+          <span class="flex gap-2">
+            <button
+              type="button"
+              class="rounded-app border border-border px-3 py-1 hover:bg-surface-raised"
+              onClick={() => props.onClose()}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="rounded-app bg-accent px-3 py-1 font-medium text-accent-fg hover:opacity-90"
+            >
+              Save
+            </button>
+          </span>
         </div>
       </form>
     </dialog>

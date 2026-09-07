@@ -1,6 +1,13 @@
 import { Repo } from "@automerge/automerge-repo";
 import { describe, expect, it } from "vitest";
-import { appendEntry, createCampaign, createEntry, entriesOf, openCampaign } from "./index.ts";
+import {
+  appendEntry,
+  createCampaign,
+  createEntry,
+  entriesOf,
+  openCampaign,
+  renameCampaign,
+} from "./index.ts";
 
 describe("campaign documents", () => {
   it("creates an index that points at an empty timeline", () => {
@@ -41,6 +48,15 @@ describe("campaign documents", () => {
     const { timeline, flush } = createCampaign(repo, "Flush");
     appendEntry(timeline, createEntry({ kind: "user", text: "x", provenance: { source: "user" } }));
     await expect(flush()).resolves.toBeUndefined();
+  });
+
+  it("renames a campaign, ignoring blank names", () => {
+    const repo = new Repo();
+    const { index } = createCampaign(repo, "Old");
+    renameCampaign(index, "  New name  ");
+    expect(index.doc().name).toBe("New name");
+    renameCampaign(index, "   ");
+    expect(index.doc().name).toBe("New name");
   });
 
   it("rejects a non-automerge url", async () => {

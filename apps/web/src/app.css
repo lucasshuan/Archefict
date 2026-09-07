@@ -18,7 +18,9 @@
   --fg-muted: oklch(0.68 0.012 85);
   --accent: oklch(0.78 0.13 70);
   --accent-fg: oklch(0.18 0.03 70);
-  --danger: oklch(0.68 0.19 25);
+  --danger: oklch(0.62 0.19 25);
+  --danger-fg: oklch(0.98 0.01 25);
+  --accent-muted: oklch(0.78 0.13 70 / 0.14);
 
   --radius: 0.5rem;
   --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -39,6 +41,8 @@
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
   --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
+  --color-accent-muted: var(--accent-muted);
 
   --radius-app: var(--radius);
   --font-body: var(--font-body);
@@ -59,7 +63,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Tailwind 4 stopped giving buttons a pointer. Interactive means pointer; disabled says so. */
+/*
+ * Interaction defaults. Everything here is in the base layer on purpose: an unlayered rule
+ * outranks every Tailwind utility, which is how buttons once lost their text color.
+ */
 @layer base {
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -75,14 +82,13 @@ body {
   textarea:disabled {
     cursor: not-allowed;
   }
-}
-
-textarea,
-input,
-select,
-button {
-  font: inherit;
-  color: inherit;
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--accent-muted);
+  }
 }
 
 dialog::backdrop {

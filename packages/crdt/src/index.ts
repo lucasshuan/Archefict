@@ -66,6 +66,14 @@ function withFlush(
   };
 }
 
+export function renameCampaign(index: DocHandle<CampaignIndexDoc>, name: string): void {
+  const trimmed = name.trim();
+  if (trimmed === "" || trimmed === index.doc().name) return;
+  index.change((doc) => {
+    doc.name = trimmed;
+  });
+}
+
 export type NewEntry = {
   kind: NarrativeEntry["kind"];
   text: string;

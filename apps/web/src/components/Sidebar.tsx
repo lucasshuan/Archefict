@@ -1,3 +1,9 @@
+import BookOpen from "lucide-solid/icons/book-open";
+import Plus from "lucide-solid/icons/plus";
+import Settings from "lucide-solid/icons/settings";
+import Swords from "lucide-solid/icons/swords";
+import Trash2 from "lucide-solid/icons/trash-2";
+import X from "lucide-solid/icons/x";
 import { createSignal, For, Show } from "solid-js";
 import type { CampaignSummary } from "../campaign/store.ts";
 
@@ -44,14 +50,17 @@ export function Sidebar(props: {
         classList={{ "-translate-x-full": !props.open }}
       >
         <div class="flex items-center justify-between px-4 py-3">
-          <span class="font-narrative text-lg tracking-wide">Archefict</span>
+          <span class="flex items-center gap-2 font-narrative text-lg tracking-wide">
+            <Swords size={18} class="text-accent" aria-hidden="true" />
+            Archefict
+          </span>
           <button
             type="button"
-            class="rounded-app px-2 py-1 text-fg-muted hover:bg-surface-raised md:hidden"
+            class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg md:hidden"
             aria-label="Close menu"
             onClick={() => props.onClose()}
           >
-            ×
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
@@ -73,11 +82,11 @@ export function Sidebar(props: {
                       when={!confirming()}
                       fallback={
                         <div class="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">
-                          <span class="truncate text-fg-muted">Delete for good?</span>
+                          <span class="truncate text-fg-muted">Delete?</span>
                           <span class="flex shrink-0 gap-1">
                             <button
                               type="button"
-                              class="rounded-app bg-danger px-2 py-0.5 text-xs font-medium text-accent-fg"
+                              class="rounded-app bg-danger px-2 py-0.5 text-xs font-medium text-danger-fg hover:opacity-90"
                               onClick={() => {
                                 setPendingDelete(null);
                                 props.onDelete(campaign.url);
@@ -87,7 +96,7 @@ export function Sidebar(props: {
                             </button>
                             <button
                               type="button"
-                              class="rounded-app border border-border px-2 py-0.5 text-xs"
+                              class="rounded-app border border-border px-2 py-0.5 text-xs hover:bg-bg"
                               onClick={() => setPendingDelete(null)}
                             >
                               Keep
@@ -107,21 +116,23 @@ export function Sidebar(props: {
                             props.onClose();
                           }}
                         >
-                          <span
-                            class="h-1.5 w-1.5 shrink-0 rounded-full"
-                            classList={{ "bg-accent": active(), "bg-border": !active() }}
+                          <BookOpen
+                            size={14}
+                            class="shrink-0"
+                            classList={{ "text-accent": active() }}
                             aria-hidden="true"
                           />
                           <span class="truncate">{campaign.name}</span>
                         </button>
                         <button
                           type="button"
-                          class="mr-1 rounded-app px-1.5 py-0.5 text-xs text-fg-muted opacity-0 hover:bg-bg hover:text-danger focus:opacity-100 group-hover:opacity-100"
+                          class="mr-1 rounded-app p-1 text-fg-muted opacity-0 transition-opacity hover:bg-bg hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
                           classList={{ "opacity-100": active() }}
                           aria-label={`Delete ${campaign.name}`}
+                          title="Delete campaign"
                           onClick={() => setPendingDelete(campaign.url)}
                         >
-                          Delete
+                          <Trash2 size={14} aria-hidden="true" />
                         </button>
                       </div>
                     </Show>
@@ -147,9 +158,11 @@ export function Sidebar(props: {
             />
             <button
               type="submit"
-              class="rounded-app bg-accent px-2 py-1 text-sm font-medium text-accent-fg hover:opacity-90"
+              class="rounded-app bg-accent p-1.5 text-accent-fg hover:opacity-90"
+              aria-label="Create campaign"
+              title="Create campaign"
             >
-              Create
+              <Plus size={16} aria-hidden="true" />
             </button>
           </form>
         </nav>
@@ -163,12 +176,12 @@ export function Sidebar(props: {
               props.onClose();
             }}
           >
-            <span aria-hidden="true">⚙</span>
+            <Settings size={16} aria-hidden="true" />
             Settings
           </button>
           <div class="mt-1 flex items-center gap-3 rounded-app px-2 py-2">
             <span
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent font-semibold text-accent-fg"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-fg"
               aria-hidden="true"
             >
               {initials(props.user.name)}

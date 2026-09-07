@@ -1,10 +1,15 @@
 import type { CampaignHandles } from "@archefict/crdt";
-import { createResource, createSignal, Show } from "solid-js";
+import Check from "lucide-solid/icons/check";
+import LoaderCircle from "lucide-solid/icons/loader-circle";
+import Menu from "lucide-solid/icons/menu";
+import TriangleAlert from "lucide-solid/icons/triangle-alert";
+import { createResource, createSignal, Match, Show, Switch } from "solid-js";
 import { createTurnRunner, type SaveState } from "./ai/turn.ts";
 import { createDocSignal } from "./campaign/doc-signal.ts";
 import { createBrowserRepo } from "./campaign/repo.ts";
 import { type Library, openLibrary, requestPersistentStorage } from "./campaign/store.ts";
 import { Composer } from "./components/Composer.tsx";
+import { EditableTitle } from "./components/EditableTitle.tsx";
 import { NarrativeFeed } from "./components/NarrativeFeed.tsx";
 import { SettingsDialog } from "./components/SettingsDialog.tsx";
 import { GUEST, Sidebar } from "./components/Sidebar.tsx";
@@ -61,7 +66,7 @@ function Shell(props: { library: Library; persisted: boolean }) {
           <Session
             handles={handles}
             settings={settingsStore}
-            persisted={props.persisted}
+            onRename={(name) => void props.library.rename(name)}
             onOpenMenu={() => setSidebarOpen(true)}
           />
         )}
@@ -70,6 +75,7 @@ function Shell(props: { library: Library; persisted: boolean }) {
       <SettingsDialog
         open={settingsOpen()}
         settings={settingsStore.settings()}
+        persisted={props.persisted}
         onSave={(next) => {
           settingsStore.save(next);
           setSettingsOpen(false);
@@ -83,7 +89,7 @@ function Shell(props: { library: Library; persisted: boolean }) {
 function Session(props: {
   handles: CampaignHandles;
   settings: SettingsStore;
-  persisted: boolean;
+  onRename: (name: string) => void;
   onOpenMenu: () => void;
 }) {
   const index = createDocSignal(props.handles.index);
@@ -96,28 +102,17 @@ function Session(props: {
 
   return (
     <main class="flex min-w-0 flex-1 flex-col">
-      <header class="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2">
-        <div class="flex min-w-0 items-baseline gap-3">
-          <button
-            type="button"
-            class="rounded-app border border-border px-2 py-1 text-xs text-fg-muted md:hidden"
-            aria-label="Open menu"
-            onClick={() => props.onOpenMenu()}
-          >
-            Menu
-          </button>
-          <h1 class="truncate text-base font-semibold tracking-wide">{index().name}</h1>
-          <span
-            class="hidden text-xs text-fg-muted sm:inline"
-            title="Whether the browser promised not to evict this campaign's storage"
-          >
-            {props.persisted ? "storage: persistent" : "storage: best-effort"}
-          </span>
-          <span class="text-xs text-fg-muted" data-save-state={turn.saveState()}>
-            {saveLabel(turn.saveState())}
-          </span>
-        </div>
-        <span class="shrink-0 text-xs text-fg-muted">{props.settings.settings().model}</span>
+      <header class="flex items-center gap-2 border-b border-border bg-surface px-3 py-2">
+        <button
+          type="button"
+          class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg md:hidden"
+          aria-label="Open menu"
+          onClick={() => props.onOpenMenu()}
+        >
+          <Menu size={18} aria-hidden="true" />
+        </button>
+        <EditableTitle value={index().name} onCommit={props.onRename} />
+        <SaveIndicator state={turn.saveState()} />
       </header>
 
       <NarrativeFeed entries={timeline().entries} streamingText={turn.streamingText()} />
@@ -134,15 +129,39 @@ function Session(props: {
   );
 }
 
-function saveLabel(state: SaveState): string {
+function SaveIndicator(props: { state: SaveState }) {
+  return (
+    <span
+      class="flex items-center text-fg-muted"
+      role="status"
+      data-save-state={props.state}
+      title={saveTitle(props.state)}
+    >
+      <Switch>
+        <Match when={props.state === "saving"}>
+          <LoaderCircle size={14} class="animate-spin" aria-hidden="true" />
+        </Match>
+        <Match when={props.state === "saved"}>
+          <Check size={14} aria-hidden="true" />
+        </Match>
+        <Match when={props.state === "failed"}>
+          <TriangleAlert size={14} class="text-danger" aria-hidden="true" />
+        </Match>
+      </Switch>
+      <span class="sr-only">{saveTitle(props.state)}</span>
+    </span>
+  );
+}
+
+function saveTitle(state: SaveState): string {
   switch (state) {
     case "idle":
       return "";
     case "saving":
-      return "saving…";
+      return "Saving…";
     case "saved":
-      return "saved";
+      return "Saved";
     case "failed":
-      return "not saved";
+      return "Not saved";
   }
 }
