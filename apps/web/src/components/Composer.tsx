@@ -95,12 +95,6 @@ export function Composer(props: {
             </button>
           </Show>
         </div>
-
-        <p class="px-2 text-xs text-fg-muted">
-          {props.hasKey
-            ? "Enter to send, Shift+Enter for a new line."
-            : "No API key set. Entries are saved, but no one answers. Add a key in Settings."}
-        </p>
       </div>
     </form>
   );

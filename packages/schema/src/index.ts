@@ -43,6 +43,7 @@ export type EntryKind = z.infer<typeof EntryKind>;
 export const NarrativeEntry = z.object({
   id: z.string().min(1),
   kind: EntryKind,
+  /** Editable Markdown source. Rendering is sanitized at the UI boundary. */
   text: z.string(),
   /** Wall-clock milliseconds. Ordering only; not campaign time. */
   createdAt: z.number().int().nonnegative(),

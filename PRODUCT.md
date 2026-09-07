@@ -14,6 +14,7 @@ Origin: running AI RPGs with campaign data spread across Fibery, Notion and Obsi
 
 ## Campaigns
 * Fully editable timeline
+* Editable narrative entries render sanitized Markdown
 * Separate timeline from chat (narrative from meta—sheets/timeline update, off-immersion questions, etc.)
 * Plugins tied to a campaign
 * Editable sheets

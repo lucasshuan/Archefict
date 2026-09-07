@@ -31,7 +31,8 @@ export const SUGGESTED_MODELS: readonly SuggestedModel[] = [
 
 export const DEFAULT_SYSTEM_PROMPT = `You are the narrator and game master of an interactive story.
 Write in second person, present tense. Describe the world, voice the characters, and let the player decide what they do.
-Never act for the player. Keep replies to a few paragraphs. End on something the player can react to.`;
+Never act for the player. Keep replies to a few paragraphs. End on something the player can react to.
+Use Markdown for headings, emphasis, lists, and blockquotes when it makes the scene clearer, but keep the prose natural. Do not embed images.`;
 
 /** How many recent entries are sent as context. A real strategy arrives with Slice 8. */
 export const CONTEXT_WINDOW_ENTRIES = 40;

@@ -5,6 +5,7 @@ import Trash2 from "lucide-solid/icons/trash-2";
 import X from "lucide-solid/icons/x";
 import { createEffect, createSignal, on, onMount, Show } from "solid-js";
 import { fitHeight } from "./auto-grow.ts";
+import { NarrativeMarkdown } from "./NarrativeMarkdown.tsx";
 
 const EDIT_MAX_HEIGHT_PX = 480;
 
@@ -60,10 +61,7 @@ export function EntryView(props: {
         <Show
           when={editing()}
           fallback={
-            <p class="whitespace-pre-wrap">
-              {props.entry.text}
-              {props.streaming ? <span class="animate-pulse text-accent">▍</span> : null}
-            </p>
+            <NarrativeMarkdown text={props.entry.text} streaming={props.streaming ?? false} />
           }
         >
           <EditBox

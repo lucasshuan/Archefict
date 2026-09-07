@@ -3,6 +3,9 @@ import { AiSettings } from "@archefict/schema";
 import { type Accessor, createSignal } from "solid-js";
 
 const SETTINGS_KEY = "archefict:settings:v1";
+const LEGACY_DEFAULT_SYSTEM_PROMPT = `You are the narrator and game master of an interactive story.
+Write in second person, present tense. Describe the world, voice the characters, and let the player decide what they do.
+Never act for the player. Keep replies to a few paragraphs. End on something the player can react to.`;
 
 export const DEFAULT_SETTINGS: AiSettings = {
   apiKey: "",
@@ -40,7 +43,16 @@ function load(): AiSettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = AiSettings.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : DEFAULT_SETTINGS;
+    if (!parsed.success) return DEFAULT_SETTINGS;
+    if (parsed.data.systemPrompt !== LEGACY_DEFAULT_SYSTEM_PROMPT) return parsed.data;
+
+    const migrated = { ...parsed.data, systemPrompt: DEFAULT_SYSTEM_PROMPT };
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(migrated));
+    } catch {
+      // The migrated prompt still applies for this session when storage is unavailable.
+    }
+    return migrated;
   } catch {
     return DEFAULT_SETTINGS;
   }

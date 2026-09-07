@@ -70,7 +70,7 @@ Everything here works offline, without an account, on IndexedDB. No AI beyond Sl
 ### Slice 0 - A narrative you can write into (built Sep 06, 2026)
 Pulled forward from Slices 3 and 7 so there is something to play with on day one.
 - [x] Dark theme through semantic tokens in `app.css`; Tailwind's palette is removed so utilities only know the tokens
-- [x] Narrative feed + composer; entries persist to IndexedDB through Automerge Repo; tabs sync over BroadcastChannel
+- [x] Narrative feed + composer; entries render sanitized Markdown and persist their editable source to IndexedDB through Automerge Repo; tabs sync over BroadcastChannel
 - [x] Storage persistence request, result shown in the header
 - [x] OpenRouter narration through the AI SDK with a device-held key; the streamed reply is written to the document once, with model, turn id and token usage in provenance
 - [x] Settings: key, model (default Claude Haiku 4.5), narrator instructions
