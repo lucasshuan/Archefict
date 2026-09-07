@@ -34,26 +34,107 @@ Write in second person, present tense. Describe the world, voice the characters,
 Never act for the player. Keep replies to a few paragraphs. End on something the player can react to.
 Use Markdown for headings, emphasis, lists, and blockquotes when it makes the scene clearer, but keep the prose natural. Do not embed images.`;
 
-/** How many recent entries are sent as context. A real strategy arrives with Slice 8. */
+/**
+ * How many recent messages are sent as context, counted after consecutive entries of one
+ * side are merged (a reply split into parts is one message). A real strategy arrives with Slice 8.
+ */
 export const CONTEXT_WINDOW_ENTRIES = 40;
 
+/**
+ * Builds the model's view of the timeline. Consecutive entries from the same side collapse
+ * into one message, so a reply the app split into editable parts reads as the single
+ * assistant turn it was.
+ */
 export function toModelMessages(entries: readonly NarrativeEntry[]): ModelMessage[] {
   const messages: ModelMessage[] = [];
-  for (const entry of entries.slice(-CONTEXT_WINDOW_ENTRIES)) {
+  for (const entry of entries) {
     if (entry.text.trim() === "") continue;
-    switch (entry.kind) {
-      case "user":
-        messages.push({ role: "user", content: entry.text });
-        break;
-      case "ai":
-        messages.push({ role: "assistant", content: entry.text });
-        break;
-      case "system":
-        // Out-of-story notes are not narrative context yet. Meta channel comes later.
-        break;
+    const role = roleOf(entry.kind);
+    if (role === null) continue;
+    const last = messages.at(-1);
+    if (last && last.role === role && typeof last.content === "string") {
+      last.content = `${last.content}\n${entry.text}`;
+    } else {
+      messages.push({ role, content: entry.text });
     }
   }
-  return messages;
+  return messages.slice(-CONTEXT_WINDOW_ENTRIES);
+}
+
+function roleOf(kind: NarrativeEntry["kind"]): "user" | "assistant" | null {
+  switch (kind) {
+    case "user":
+      return "user";
+    case "ai":
+      return "assistant";
+    case "system":
+      // Out-of-story notes are not narrative context yet. Meta channel comes later.
+      return null;
+  }
+}
+
+type BlockKind = "prose" | "heading" | "list" | "table" | "quote" | "fence";
+
+/**
+ * Splits a reply into the parts the timeline stores as separate, individually editable
+ * entries. The feed renders a newline as a line break, so every prose line is one part.
+ * Markdown blocks that only make sense whole stay whole: list items, table rows and
+ * blockquote lines group with their neighbours of the same kind, fenced code is never cut.
+ */
+export function splitReply(text: string): string[] {
+  const parts: string[] = [];
+  let current: string[] = [];
+  let currentKind: BlockKind | null = null;
+  let inFence = false;
+
+  const flush = (): void => {
+    const joined = current.join("\n").trim();
+    if (joined !== "") parts.push(joined);
+    current = [];
+    currentKind = null;
+  };
+
+  for (const raw of text.split(/\r?\n/)) {
+    if (inFence) {
+      current.push(raw);
+      if (isFenceLine(raw)) {
+        inFence = false;
+        flush();
+      }
+      continue;
+    }
+    if (isFenceLine(raw)) {
+      flush();
+      inFence = true;
+      currentKind = "fence";
+      current.push(raw);
+      continue;
+    }
+    const line = raw.trimEnd();
+    if (line.trim() === "") {
+      flush();
+      continue;
+    }
+    const kind = classify(line);
+    const continues = kind !== "prose" && kind !== "heading" && kind === currentKind;
+    if (!continues) flush();
+    current.push(line);
+    currentKind = kind;
+  }
+  flush();
+  return parts;
+}
+
+function isFenceLine(line: string): boolean {
+  return /^\s{0,3}(`{3,}|~{3,})/.test(line);
+}
+
+function classify(line: string): BlockKind {
+  if (/^\s{0,3}#{1,6}\s/.test(line)) return "heading";
+  if (/^\s*([-*+]|\d+[.)])\s+/.test(line)) return "list";
+  if (/^\s*\|/.test(line)) return "table";
+  if (/^\s*>/.test(line)) return "quote";
+  return "prose";
 }
 
 export type NarrationRequest = {

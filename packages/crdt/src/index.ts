@@ -97,6 +97,17 @@ export function appendEntry(timeline: DocHandle<TimelineDoc>, entry: NarrativeEn
   });
 }
 
+/** Several entries in one change: one history step, one undo unit later. */
+export function appendEntries(
+  timeline: DocHandle<TimelineDoc>,
+  entries: readonly NarrativeEntry[],
+): void {
+  if (entries.length === 0) return;
+  timeline.change((doc) => {
+    for (const entry of entries) doc.entries.push(entry);
+  });
+}
+
 /**
  * Rewrites an entry's text as a minimal text diff, so concurrent edits to the same entry
  * merge character by character instead of one side losing everything.

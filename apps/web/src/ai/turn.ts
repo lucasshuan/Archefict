@@ -1,5 +1,6 @@
-import { streamNarration } from "@archefict/ai";
+import { splitReply, streamNarration } from "@archefict/ai";
 import {
+  appendEntries,
   appendEntry,
   createEntry,
   deleteEntry,
@@ -106,6 +107,11 @@ export function createTurnRunner(options: {
     }
   }
 
+  /**
+   * One reply becomes one entry per line (lists, tables, quotes and code stay whole), so
+   * each beat can be edited or deleted on its own. All parts share the turn id; token usage
+   * is recorded on the first part only, so spend is never counted twice.
+   */
   async function commitReply(
     reply: string,
     provenance: {
@@ -114,10 +120,18 @@ export function createTurnRunner(options: {
       usage?: { inputTokens?: number; outputTokens?: number };
     },
   ): Promise<void> {
-    if (reply.trim() === "") return;
-    appendEntry(
+    const parts = splitReply(reply);
+    if (parts.length === 0) return;
+    const { usage, ...shared } = provenance;
+    appendEntries(
       options.timeline,
-      createEntry({ kind: "ai", text: reply, provenance: { source: "ai", ...provenance } }),
+      parts.map((text, i) =>
+        createEntry({
+          kind: "ai",
+          text,
+          provenance: { source: "ai", ...shared, ...(i === 0 && usage ? { usage } : {}) },
+        }),
+      ),
     );
     await persist();
   }
