@@ -5,7 +5,7 @@ export function SidebarToggle(props: { open: boolean; onToggle: () => void }) {
     <button
       type="button"
       class="fixed left-4 top-3 z-30 rounded-app p-1.5 text-fg-muted transition-colors hover:bg-surface-raised hover:text-fg motion-reduce:transition-none"
-      classList={{ "bg-surface-raised text-fg": props.open }}
+      classList={{ "text-fg": props.open }}
       aria-label={label()}
       title={label()}
       aria-controls="campaign-drawer"
