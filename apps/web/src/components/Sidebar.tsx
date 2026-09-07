@@ -6,6 +6,8 @@ import Trash2 from "lucide-solid/icons/trash-2";
 import X from "lucide-solid/icons/x";
 import { createSignal, For, Show } from "solid-js";
 import type { CampaignSummary } from "../campaign/store.ts";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { CreateCampaignDialog } from "./CreateCampaignDialog.tsx";
 
 export type MockUser = {
   name: string;
@@ -26,13 +28,8 @@ export function Sidebar(props: {
   onDelete: (url: string) => void;
   onOpenSettings: () => void;
 }) {
-  const [newName, setNewName] = createSignal("");
-  const [pendingDelete, setPendingDelete] = createSignal<string | null>(null);
-
-  function create(): void {
-    props.onCreate(newName());
-    setNewName("");
-  }
+  const [creating, setCreating] = createSignal(false);
+  const [pendingDelete, setPendingDelete] = createSignal<CampaignSummary | null>(null);
 
   return (
     <>
@@ -65,106 +62,62 @@ export function Sidebar(props: {
         </div>
 
         <nav class="flex min-h-0 flex-1 flex-col px-2" aria-label="Campaigns">
-          <div class="px-2 pb-1 text-xs font-semibold uppercase tracking-wider text-fg-muted">
-            Campaigns
+          <div class="flex items-center justify-between px-2 pb-1">
+            <span class="text-xs font-semibold uppercase tracking-wider text-fg-muted">
+              Campaigns
+            </span>
+            <button
+              type="button"
+              class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg"
+              aria-label="New campaign"
+              title="New campaign"
+              onClick={() => setCreating(true)}
+            >
+              <Plus size={16} aria-hidden="true" />
+            </button>
           </div>
           <ul class="flex-1 space-y-0.5 overflow-y-auto">
             <For each={props.campaigns}>
               {(campaign) => {
                 const active = () => campaign.url === props.activeUrl;
-                const confirming = () => pendingDelete() === campaign.url;
                 return (
                   <li
-                    class="group rounded-app"
-                    classList={{ "bg-surface-raised": active() || confirming() }}
+                    class="group flex items-center rounded-app"
+                    classList={{ "bg-surface-raised": active() }}
                   >
-                    <Show
-                      when={!confirming()}
-                      fallback={
-                        <div class="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">
-                          <span class="truncate text-fg-muted">Delete?</span>
-                          <span class="flex shrink-0 gap-1">
-                            <button
-                              type="button"
-                              class="rounded-app bg-danger px-2 py-0.5 text-xs font-medium text-danger-fg hover:opacity-90"
-                              onClick={() => {
-                                setPendingDelete(null);
-                                props.onDelete(campaign.url);
-                              }}
-                            >
-                              Yes, delete
-                            </button>
-                            <button
-                              type="button"
-                              class="rounded-app border border-border px-2 py-0.5 text-xs hover:bg-bg"
-                              onClick={() => setPendingDelete(null)}
-                            >
-                              Keep
-                            </button>
-                          </span>
-                        </div>
-                      }
+                    <button
+                      type="button"
+                      class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm hover:text-fg"
+                      classList={{ "text-fg": active(), "text-fg-muted": !active() }}
+                      aria-current={active() ? "page" : undefined}
+                      onClick={() => {
+                        props.onSelect(campaign.url);
+                        props.onClose();
+                      }}
                     >
-                      <div class="flex items-center">
-                        <button
-                          type="button"
-                          class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm hover:text-fg"
-                          classList={{ "text-fg": active(), "text-fg-muted": !active() }}
-                          aria-current={active() ? "page" : undefined}
-                          onClick={() => {
-                            props.onSelect(campaign.url);
-                            props.onClose();
-                          }}
-                        >
-                          <BookOpen
-                            size={14}
-                            class="shrink-0"
-                            classList={{ "text-accent": active() }}
-                            aria-hidden="true"
-                          />
-                          <span class="truncate">{campaign.name}</span>
-                        </button>
-                        <button
-                          type="button"
-                          class="mr-1 rounded-app p-1 text-fg-muted opacity-0 transition-opacity hover:bg-bg hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
-                          classList={{ "opacity-100": active() }}
-                          aria-label={`Delete ${campaign.name}`}
-                          title="Delete campaign"
-                          onClick={() => setPendingDelete(campaign.url)}
-                        >
-                          <Trash2 size={14} aria-hidden="true" />
-                        </button>
-                      </div>
-                    </Show>
+                      <BookOpen
+                        size={14}
+                        class="shrink-0"
+                        classList={{ "text-accent": active() }}
+                        aria-hidden="true"
+                      />
+                      <span class="truncate">{campaign.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="mr-1 rounded-app p-1 text-fg-muted opacity-0 transition-opacity hover:bg-bg hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
+                      classList={{ "opacity-100": active() }}
+                      aria-label={`Delete ${campaign.name}`}
+                      title="Delete campaign"
+                      onClick={() => setPendingDelete(campaign)}
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
+                    </button>
                   </li>
                 );
               }}
             </For>
           </ul>
-
-          <form
-            class="mt-2 flex gap-1 px-1 pb-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              create();
-            }}
-          >
-            <input
-              aria-label="New campaign name"
-              placeholder="New campaign"
-              value={newName()}
-              onInput={(event) => setNewName(event.currentTarget.value)}
-              class="min-w-0 flex-1 rounded-app border border-border bg-bg px-2 py-1 text-sm outline-none focus:border-accent"
-            />
-            <button
-              type="submit"
-              class="rounded-app bg-accent p-1.5 text-accent-fg hover:opacity-90"
-              aria-label="Create campaign"
-              title="Create campaign"
-            >
-              <Plus size={16} aria-hidden="true" />
-            </button>
-          </form>
         </nav>
 
         <div class="border-t border-border p-2">
@@ -193,6 +146,28 @@ export function Sidebar(props: {
           </div>
         </div>
       </aside>
+
+      <CreateCampaignDialog
+        open={creating()}
+        onCreate={(name) => {
+          setCreating(false);
+          props.onCreate(name);
+          props.onClose();
+        }}
+        onClose={() => setCreating(false)}
+      />
+      <ConfirmDialog
+        open={pendingDelete() !== null}
+        title="Delete campaign"
+        message={`Delete "${pendingDelete()?.name ?? ""}" and everything in it? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          const target = pendingDelete();
+          setPendingDelete(null);
+          if (target) props.onDelete(target.url);
+        }}
+        onClose={() => setPendingDelete(null)}
+      />
     </>
   );
 }
