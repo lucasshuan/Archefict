@@ -1,7 +1,6 @@
 import BookOpen from "lucide-solid/icons/book-open";
 import Plus from "lucide-solid/icons/plus";
 import Settings from "lucide-solid/icons/settings";
-import Swords from "lucide-solid/icons/swords";
 import Trash2 from "lucide-solid/icons/trash-2";
 import X from "lucide-solid/icons/x";
 import { createSignal, For, Show } from "solid-js";
