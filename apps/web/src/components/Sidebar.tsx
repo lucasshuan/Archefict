@@ -15,7 +15,10 @@ export type MockUser = {
 };
 
 /** Stands in for the account until auth arrives (ROADMAP Slice 11). */
-export const GUEST: MockUser = { name: "Guest player", status: "Local only · not signed in" };
+export const GUEST: MockUser = {
+  name: "Guest player",
+  status: "Local only · not signed in",
+};
 
 export function Sidebar(props: {
   campaigns: readonly CampaignSummary[];
@@ -48,7 +51,6 @@ export function Sidebar(props: {
       >
         <div class="flex items-center justify-between px-4 py-3">
           <span class="flex items-center gap-2 font-narrative text-lg tracking-wide">
-            <Swords size={18} class="text-accent" aria-hidden="true" />
             Archefict
           </span>
           <button
@@ -88,7 +90,10 @@ export function Sidebar(props: {
                     <button
                       type="button"
                       class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm hover:text-fg"
-                      classList={{ "text-fg": active(), "text-fg-muted": !active() }}
+                      classList={{
+                        "text-fg": active(),
+                        "text-fg-muted": !active(),
+                      }}
                       aria-current={active() ? "page" : undefined}
                       onClick={() => {
                         props.onSelect(campaign.url);
