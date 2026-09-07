@@ -3,11 +3,13 @@ import { AiSettings } from "@archefict/schema";
 import ArrowLeft from "lucide-solid/icons/arrow-left";
 import Bot from "lucide-solid/icons/bot";
 import HardDrive from "lucide-solid/icons/hard-drive";
+import Info from "lucide-solid/icons/info";
 import KeyRound from "lucide-solid/icons/key-round";
 import ScrollText from "lucide-solid/icons/scroll-text";
 import {
   createResource,
   createSignal,
+  createUniqueId,
   For,
   type JSX,
   Match,
@@ -198,11 +200,6 @@ export function SettingsPage(props: {
                     : "The browser may evict this data when disk space runs low. Export a campaign before clearing site data."
                 }
               />
-
-              <p class="text-sm text-fg-muted">
-                Campaigns live in this browser only. There is no account yet, and nothing is
-                uploaded.
-              </p>
             </Match>
           </Switch>
 
@@ -235,6 +232,59 @@ export function SettingsPage(props: {
   );
 }
 
+/**
+ * Label plus an info badge. The explanation lives in the badge tooltip rather than under
+ * the control, so a page of many settings stays scannable. Hovering the label or the badge
+ * shows it, and focusing the badge shows it for the keyboard.
+ */
+function FieldLabel(props: {
+  /** Id of the control this labels, or null when the row is read-only. */
+  control: string | null;
+  icon: JSX.Element;
+  label: string;
+  hint: string;
+}) {
+  const tip = createUniqueId();
+
+  return (
+    <div class="group/tip relative flex w-fit items-center gap-2">
+      <Show
+        when={props.control}
+        fallback={
+          <span class="flex items-center gap-2 text-fg-muted">
+            {props.icon}
+            {props.label}
+          </span>
+        }
+      >
+        {(control) => (
+          <label for={control()} class="flex items-center gap-2 text-fg-muted">
+            {props.icon}
+            {props.label}
+          </label>
+        )}
+      </Show>
+      <button
+        type="button"
+        aria-label="More information"
+        aria-describedby={tip}
+        class="rounded-full text-fg-subtle transition-colors hover:text-fg-muted"
+      >
+        <Info size={13} aria-hidden="true" />
+      </button>
+      {/* Below the label, not above: the panel scrolls, and a tooltip above the first
+          field would be clipped by it. Never hit-testable, so it cannot block a click. */}
+      <span
+        id={tip}
+        role="tooltip"
+        class="pointer-events-none absolute top-full left-0 z-10 mt-1.5 w-64 rounded-lg bg-surface-raised px-2.5 py-1.5 text-xs text-fg opacity-0 shadow-lg transition-opacity group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 motion-reduce:transition-none"
+      >
+        {props.hint}
+      </span>
+    </div>
+  );
+}
+
 /** A labelled control. The caller gives its input the same id. */
 function Field(props: {
   id: string;
@@ -245,12 +295,8 @@ function Field(props: {
 }) {
   return (
     <div class="flex flex-col gap-1 text-sm">
-      <label for={props.id} class="flex w-fit items-center gap-2 text-fg-muted">
-        {props.icon}
-        {props.label}
-      </label>
+      <FieldLabel control={props.id} icon={props.icon} label={props.label} hint={props.hint} />
       {props.children}
-      <span class="text-xs text-fg-muted">{props.hint}</span>
     </div>
   );
 }
@@ -259,15 +305,13 @@ function Field(props: {
 function InfoRow(props: { icon: JSX.Element; label: string; value: string; hint: string }) {
   return (
     <div class="flex flex-col gap-1 text-sm">
-      <span class="flex items-center gap-2 text-fg-muted">
-        {props.icon}
-        {props.label}
-      </span>
+      <FieldLabel control={null} icon={props.icon} label={props.label} hint={props.hint} />
       <p class="rounded-xl bg-surface px-3 py-2">{props.value}</p>
-      <span class="text-xs text-fg-muted">{props.hint}</span>
     </div>
   );
 }
+
+const MODEL_INPUT_ID = "settings-narrator-model";
 
 function ModelField(props: {
   value: string;
@@ -278,17 +322,25 @@ function ModelField(props: {
   const selected = () => props.models.find((model) => model.id === props.value);
 
   return (
-    <label class="flex flex-col gap-1 text-sm">
-      <span class="flex items-center gap-2 text-fg-muted">
-        <Bot size={14} aria-hidden="true" />
-        Narrator model
+    <div class="flex flex-col gap-1 text-sm">
+      <div class="flex items-center gap-2">
+        <FieldLabel
+          control={MODEL_INPUT_ID}
+          icon={<Bot size={14} aria-hidden="true" />}
+          label="Narrator model"
+          hint="Writes the player-facing narrative. Any OpenRouter model id works, not only the suggestions."
+        />
         <Show when={props.offline}>
-          <span class="text-xs" title="The API is unreachable; showing the built-in list.">
+          <span
+            class="text-xs text-fg-subtle"
+            title="The API is unreachable; showing the built-in list."
+          >
             (offline list)
           </span>
         </Show>
-      </span>
+      </div>
       <input
+        id={MODEL_INPUT_ID}
         list="archefict-models"
         value={props.value}
         onInput={(event) => props.onInput(event.currentTarget.value)}
@@ -298,16 +350,17 @@ function ModelField(props: {
       <datalist id="archefict-models">
         <For each={props.models}>{(model) => <option value={model.id}>{model.name}</option>}</For>
       </datalist>
+      {/* The one description that stays on the page: it describes the chosen option. */}
       <Show
         when={selected()}
         fallback={
-          <span class="text-xs text-fg-muted">
-            Writes the player-facing narrative. Any OpenRouter model id works.
+          <span class="text-xs text-fg-subtle">
+            Not in the catalogue. It will still be sent as typed.
           </span>
         }
       >
         {(model) => (
-          <span class="text-xs text-fg-muted">
+          <span class="text-xs text-fg-subtle">
             {model().name}: ${model().pricing.input}/M in, ${model().pricing.output}/M out
             <Show when={model().contextLength > 0}>
               , {Math.round(model().contextLength / 1000)}k context
@@ -316,6 +369,6 @@ function ModelField(props: {
           </span>
         )}
       </Show>
-    </label>
+    </div>
   );
 }
