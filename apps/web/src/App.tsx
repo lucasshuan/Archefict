@@ -2,11 +2,12 @@ import type { CampaignHandles } from "@archefict/crdt";
 import Check from "lucide-solid/icons/check";
 import LoaderCircle from "lucide-solid/icons/loader-circle";
 import TriangleAlert from "lucide-solid/icons/triangle-alert";
-import { createResource, createSignal, Match, Show, Switch } from "solid-js";
-import { createTurnRunner, type SaveState } from "./ai/turn.ts";
+import { createResource, createSignal, Match, onCleanup, onMount, Show, Switch } from "solid-js";
+import { createTurnRunner } from "./ai/turn.ts";
 import { createDocSignal } from "./campaign/doc-signal.ts";
 import { createBrowserRepo } from "./campaign/repo.ts";
 import { type Library, openLibrary, requestPersistentStorage } from "./campaign/store.ts";
+import { createTimelineController, type SaveState } from "./campaign/timeline.ts";
 import { Composer } from "./components/Composer.tsx";
 import { EditableTitle } from "./components/EditableTitle.tsx";
 import { NarrativeFeed } from "./components/NarrativeFeed.tsx";
@@ -94,34 +95,63 @@ function Session(props: {
   onRename: (name: string) => void;
 }) {
   const index = createDocSignal(props.handles.index);
-  const timeline = createDocSignal(props.handles.timeline);
+  const doc = createDocSignal(props.handles.timeline);
+  const timeline = createTimelineController(props.handles);
   const turn = createTurnRunner({
-    timeline: props.handles.timeline,
-    flush: props.handles.flush,
+    timeline,
+    entries: () => doc().entries,
     settings: props.settings.settings,
+  });
+
+  onMount(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || turn.busy()) return;
+      // Inputs keep their own native undo; only the timeline responds outside them.
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+      ) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        void timeline.undo();
+      } else if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        void timeline.redo();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    onCleanup(() => document.removeEventListener("keydown", onKeyDown));
   });
 
   return (
     <main class="flex min-w-0 flex-1 flex-col" inert={props.drawerOpen}>
       <header class="flex items-center gap-2 py-3 pl-14 pr-4">
         <EditableTitle value={index().name} onCommit={props.onRename} />
-        <SaveIndicator state={turn.saveState()} />
+        <SaveIndicator state={timeline.saveState()} />
       </header>
 
       <NarrativeFeed
-        entries={timeline().entries}
+        entries={doc().entries}
         streamingText={turn.streamingText()}
-        onEdit={(id, text) => void turn.edit(id, text)}
-        onDelete={(id) => void turn.remove(id)}
+        onEdit={(id, text) => void timeline.update(id, text)}
+        onDelete={(id) => void timeline.remove(id)}
       />
 
       <Composer
         draftKey={props.handles.timeline.url}
         busy={turn.busy()}
         hasKey={props.settings.settings().apiKey !== ""}
-        error={turn.error()}
+        error={turn.error() ?? timeline.error()}
+        canUndo={timeline.canUndo()}
+        canRedo={timeline.canRedo()}
         onSubmit={(text) => void turn.submit(text)}
         onStop={turn.stop}
+        onUndo={() => void timeline.undo()}
+        onRedo={() => void timeline.redo()}
       />
     </main>
   );

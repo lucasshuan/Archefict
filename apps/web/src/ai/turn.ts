@@ -1,31 +1,16 @@
 import { splitReply, streamNarration } from "@archefict/ai";
-import {
-  appendEntries,
-  appendEntry,
-  createEntry,
-  deleteEntry,
-  entriesOf,
-  type TimelineDoc,
-  updateEntry,
-} from "@archefict/crdt";
-import type { AiSettings } from "@archefict/schema";
-import type { DocHandle } from "@automerge/automerge-repo";
+import { createEntry } from "@archefict/crdt";
+import type { AiSettings, NarrativeEntry } from "@archefict/schema";
 import { type Accessor, createSignal, onCleanup } from "solid-js";
-
-export type SaveState = "idle" | "saving" | "saved" | "failed";
+import type { TimelineController } from "../campaign/timeline.ts";
 
 export type TurnRunner = {
   /** Text of the reply being streamed, or null when idle. */
   streamingText: Accessor<string | null>;
   error: Accessor<string | null>;
   busy: Accessor<boolean>;
-  /** Whether the last write has reached storage. "saved" is the only durable state. */
-  saveState: Accessor<SaveState>;
   submit: (text: string) => Promise<void>;
   stop: () => void;
-  /** Rewrite one entry. Any entry, the AI's included: the timeline is the player's. */
-  edit: (id: string, text: string) => Promise<void>;
-  remove: (id: string) => Promise<void>;
 };
 
 /**
@@ -35,32 +20,19 @@ export type TurnRunner = {
  * once, when complete. Streaming token-by-token into a CRDT would bloat its history for no
  * benefit. The provenance carries the model, the turn id and token usage.
  *
- * Every write is followed by a flush. The Repo persists on a debounce, and a reload inside
- * that window would lose the entry. "Saved" in the UI means the flush resolved.
+ * Writing, persistence and undo are the timeline controller's job. This orchestrates only.
  */
 export function createTurnRunner(options: {
-  timeline: DocHandle<TimelineDoc>;
-  flush: () => Promise<void>;
+  timeline: TimelineController;
+  entries: () => readonly NarrativeEntry[];
   settings: Accessor<AiSettings>;
 }): TurnRunner {
   const [streamingText, setStreamingText] = createSignal<string | null>(null);
   const [error, setError] = createSignal<string | null>(null);
-  const [saveState, setSaveState] = createSignal<SaveState>("idle");
   let controller: AbortController | null = null;
 
   // Switching campaigns unmounts the session; a reply still streaming must not land later.
   onCleanup(() => controller?.abort());
-
-  async function persist(): Promise<void> {
-    setSaveState("saving");
-    try {
-      await options.flush();
-      setSaveState("saved");
-    } catch (caught) {
-      setSaveState("failed");
-      setError(`Could not save to local storage: ${describe(caught)}`);
-    }
-  }
 
   async function submit(text: string): Promise<void> {
     const trimmed = text.trim();
@@ -68,11 +40,9 @@ export function createTurnRunner(options: {
     setError(null);
 
     const turnId = crypto.randomUUID();
-    appendEntry(
-      options.timeline,
+    await options.timeline.append([
       createEntry({ kind: "user", text: trimmed, provenance: { source: "user", turnId } }),
-    );
-    await persist();
+    ]);
 
     const settings = options.settings();
     if (settings.apiKey === "") return; // Manual mode: the player narrates both sides.
@@ -86,7 +56,7 @@ export function createTurnRunner(options: {
         apiKey: settings.apiKey,
         model: settings.narratorModel,
         systemPrompt: settings.systemPrompt,
-        entries: entriesOf(options.timeline),
+        entries: options.entries(),
         signal: controller.signal,
       });
       for await (const chunk of narration.text) {
@@ -109,8 +79,9 @@ export function createTurnRunner(options: {
 
   /**
    * One reply becomes one entry per line (lists, tables, quotes and code stay whole), so
-   * each beat can be edited or deleted on its own. All parts share the turn id; token usage
-   * is recorded on the first part only, so spend is never counted twice.
+   * each beat can be edited or deleted on its own. All parts share the turn id and are
+   * appended in one action, so a single undo takes back the whole reply. Token usage is
+   * recorded on the first part only, so spend is never counted twice.
    */
   async function commitReply(
     reply: string,
@@ -123,8 +94,7 @@ export function createTurnRunner(options: {
     const parts = splitReply(reply);
     if (parts.length === 0) return;
     const { usage, ...shared } = provenance;
-    appendEntries(
-      options.timeline,
+    await options.timeline.append(
       parts.map((text, i) =>
         createEntry({
           kind: "ai",
@@ -133,36 +103,21 @@ export function createTurnRunner(options: {
         }),
       ),
     );
-    await persist();
   }
 
   function stop(): void {
     controller?.abort();
   }
 
-  async function edit(id: string, text: string): Promise<void> {
-    updateEntry(options.timeline, id, text);
-    await persist();
-  }
-
-  async function remove(id: string): Promise<void> {
-    deleteEntry(options.timeline, id);
-    await persist();
-  }
-
   return {
     streamingText,
     error,
     busy: () => streamingText() !== null,
-    saveState,
     submit,
     stop,
-    edit,
-    remove,
   };
 }
 
 function describe(caught: unknown): string {
-  if (caught instanceof Error) return caught.message;
-  return String(caught);
+  return caught instanceof Error ? caught.message : String(caught);
 }

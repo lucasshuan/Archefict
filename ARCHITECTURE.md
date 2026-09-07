@@ -25,6 +25,7 @@ packages/config    Shared tsconfig presets.
 
 - Automerge is canonical. One document per thing: `campaign-index`, `timeline:<id>`, later `sheet:<id>`, `chat:<id>`. Never one document per campaign.
 - Every write is a function in `packages/crdt`, then `flush()`. Nothing is durable until flush resolves.
+- Mutations return the action they performed. Undo applies the inverse as an ordinary change, so it merges and syncs; document snapshots are never used.
 - Local-only state (drafts, settings, campaign registry) is localStorage under `archefict:*`. Never in a CRDT.
 - Security state (accounts, membership, keys) is Postgres, later. Never in a CRDT.
 - Shapes come from `packages/schema` and are validated at every boundary: storage read, API in and out, LLM output.
@@ -44,6 +45,7 @@ src/<feature>/     a feature that owns state and UI gets a folder (later: sheets
 
 - Solid 1.x. Signals and props. `createDocSignal(handle)` is how a document reaches the UI. No other reactive store until a slice proves the need.
 - The session is keyed by campaign. Switching remounts it. Per-campaign state lives inside `Session`.
+- All timeline writes go through `campaign/timeline.ts`. It owns persistence, save state and the 50-step undo history, which is per device in localStorage. Destructive actions are undoable, so they do not ask for confirmation.
 - Styling: Tailwind utilities on semantic tokens only (`bg-surface`, `text-fg-muted`). The palette is removed; `bg-zinc-900` does not compile. Cursors and other interaction defaults come from the base layer, never per element.
 - Dark is the theme. The tokens are the future plugin theming API.
 - Icons are lucide-solid, imported one at a time (`lucide-solid/icons/<name>`), never from the package root. Decorative icons carry `aria-hidden`; icon-only buttons carry `aria-label`.

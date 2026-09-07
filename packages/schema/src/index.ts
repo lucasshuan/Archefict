@@ -54,6 +54,46 @@ export const NarrativeEntry = z.object({
 export type NarrativeEntry = z.infer<typeof NarrativeEntry>;
 
 // ---------------------------------------------------------------------------
+// Timeline history. Local to one device, never synced: undo belongs to the person.
+// ---------------------------------------------------------------------------
+
+/**
+ * One reversible timeline action, stored with everything needed to invert and replay it.
+ * Appending a split AI reply is a single action, so one undo takes back the whole turn
+ * instead of one line at a time.
+ */
+export const TimelineAction = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("append"),
+    entries: z.array(NarrativeEntry).min(1),
+  }),
+  z.object({
+    type: z.literal("update"),
+    id: z.string().min(1),
+    before: z.string(),
+    after: z.string(),
+    /** editedAt before the change. Absent when the entry had never been edited. */
+    beforeEditedAt: z.number().int().nonnegative().optional(),
+    afterEditedAt: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal("delete"),
+    entry: NarrativeEntry,
+    /** Id of the entry above it, null when it was first. Restores position. */
+    afterId: z.string().nullable(),
+    index: z.number().int().nonnegative(),
+  }),
+]);
+export type TimelineAction = z.infer<typeof TimelineAction>;
+
+export const TimelineHistory = z.object({
+  version: z.literal(1),
+  undo: z.array(TimelineAction),
+  redo: z.array(TimelineAction),
+});
+export type TimelineHistory = z.infer<typeof TimelineHistory>;
+
+// ---------------------------------------------------------------------------
 // AI settings. Device-owned. Never stored in a synced document.
 // ---------------------------------------------------------------------------
 

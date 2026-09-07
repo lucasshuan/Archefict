@@ -77,6 +77,7 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [x] `apps/api` (Hono + oRPC on Node 24) and `packages/contract` created early to fix the boundary: health, model catalogue with live prices, OpenAPI document. Narration stays in the browser with the device-owned key
 - [x] Writes are flushed to IndexedDB after every entry and the header shows saving/saved; a reload inside the Repo's save debounce used to lose the entry
 - [x] Unsent composer draft kept per campaign across reloads
+- [x] Undo/redo, 50 steps per campaign, next to the composer and on Ctrl+Z / Ctrl+Shift+Z. Inverse actions in `packages/crdt`, stack in localStorage so it survives reloads. Appending a split reply is one step. Entry delete no longer confirms
 - [x] Animated hamburger + left drawer: campaign list with create, switch and two-step delete; Settings entry; mock guest user. Icons via lucide-solid; contrast bug fixed (an unlayered rule in app.css beat every utility); title renames inline. Campaign list is a local registry (`campaign/library.ts`) until it becomes the account's list in Slice 11
 - [x] Entries are editable and deletable in place (hover reveals edit/delete, Ctrl+Enter saves, delete confirms). Edits are Automerge text diffs, so concurrent edits merge; `editedAt` marks them. The AI's entries are editable too: the timeline is the player's
 - [ ] **Play:** one real session with the AI; capture only findings that change the plan.

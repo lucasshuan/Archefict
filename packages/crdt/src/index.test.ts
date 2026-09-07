@@ -1,13 +1,16 @@
 import { Repo } from "@automerge/automerge-repo";
 import { describe, expect, it } from "vitest";
 import {
+  appendEntries,
   appendEntry,
   createCampaign,
   createEntry,
   deleteEntry,
   entriesOf,
   openCampaign,
+  redoAction,
   renameCampaign,
+  undoAction,
   updateEntry,
 } from "./index.ts";
 
@@ -93,5 +96,110 @@ describe("campaign documents", () => {
   it("rejects a non-automerge url", async () => {
     const repo = new Repo();
     await expect(openCampaign(repo, "nope")).rejects.toThrow(/Not an Automerge URL/);
+  });
+});
+
+describe("undo and redo", () => {
+  function timelineWith(texts: readonly string[]) {
+    const repo = new Repo();
+    const { timeline } = createCampaign(repo, "History");
+    const entries = texts.map((text) =>
+      createEntry({ kind: "user", text, provenance: { source: "user" } }),
+    );
+    for (const entry of entries) appendEntry(timeline, entry);
+    return { timeline, entries };
+  }
+  const texts = (timeline: ReturnType<typeof timelineWith>["timeline"]) =>
+    entriesOf(timeline).map((entry) => entry.text);
+
+  it("takes back an append of several entries as one step, and puts them back", () => {
+    const repo = new Repo();
+    const { timeline } = createCampaign(repo, "Reply");
+    const parts = ["The door creaks.", "A voice answers."].map((text) =>
+      createEntry({ kind: "ai", text, provenance: { source: "ai", turnId: "t1" } }),
+    );
+    const action = appendEntries(timeline, parts);
+    expect(action).not.toBeNull();
+    if (!action) return;
+
+    expect(undoAction(timeline, action)).toBe(true);
+    expect(entriesOf(timeline)).toEqual([]);
+    expect(redoAction(timeline, action)).toBe(true);
+    expect(texts(timeline)).toEqual(["The door creaks.", "A voice answers."]);
+  });
+
+  it("restores the previous text and drops editedAt when the entry had never been edited", () => {
+    const { timeline, entries } = timelineWith(["first"]);
+    const first = entries[0];
+    expect(first).toBeDefined();
+    if (!first) return;
+
+    const action = updateEntry(timeline, first.id, "changed");
+    expect(action).not.toBeNull();
+    if (!action) return;
+    expect(entriesOf(timeline)[0]?.editedAt).toBeTypeOf("number");
+
+    expect(undoAction(timeline, action)).toBe(true);
+    expect(texts(timeline)).toEqual(["first"]);
+    expect(entriesOf(timeline)[0]?.editedAt).toBeUndefined();
+
+    expect(redoAction(timeline, action)).toBe(true);
+    expect(texts(timeline)).toEqual(["changed"]);
+    expect(entriesOf(timeline)[0]?.editedAt).toBeTypeOf("number");
+  });
+
+  it("puts a deleted entry back where it was, even after later appends", () => {
+    const { timeline, entries } = timelineWith(["one", "two", "three"]);
+    const middle = entries[1];
+    expect(middle).toBeDefined();
+    if (!middle) return;
+
+    const action = deleteEntry(timeline, middle.id);
+    expect(action).not.toBeNull();
+    if (!action) return;
+    expect(texts(timeline)).toEqual(["one", "three"]);
+
+    appendEntry(
+      timeline,
+      createEntry({ kind: "user", text: "four", provenance: { source: "user" } }),
+    );
+    expect(undoAction(timeline, action)).toBe(true);
+    expect(texts(timeline)).toEqual(["one", "two", "three", "four"]);
+
+    expect(redoAction(timeline, action)).toBe(true);
+    expect(texts(timeline)).toEqual(["one", "three", "four"]);
+  });
+
+  it("restores a first entry at the top", () => {
+    const { timeline, entries } = timelineWith(["one", "two"]);
+    const first = entries[0];
+    if (!first) return;
+    const action = deleteEntry(timeline, first.id);
+    if (!action) return;
+    expect(undoAction(timeline, action)).toBe(true);
+    expect(texts(timeline)).toEqual(["one", "two"]);
+  });
+
+  it("reports false for a stale action instead of writing", () => {
+    const { timeline, entries } = timelineWith(["one"]);
+    const first = entries[0];
+    if (!first) return;
+    const action = deleteEntry(timeline, first.id);
+    if (!action) return;
+
+    expect(undoAction(timeline, action)).toBe(true);
+    // Already back: undoing the same delete twice must not duplicate it.
+    expect(undoAction(timeline, action)).toBe(false);
+    expect(texts(timeline)).toEqual(["one"]);
+
+    const update = updateEntry(timeline, "missing", "nope");
+    expect(update).toBeNull();
+  });
+
+  it("returns null when an update would not change anything", () => {
+    const { timeline, entries } = timelineWith(["same"]);
+    const first = entries[0];
+    if (!first) return;
+    expect(updateEntry(timeline, first.id, "same")).toBeNull();
   });
 });

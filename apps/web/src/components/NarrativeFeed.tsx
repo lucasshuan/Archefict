@@ -1,6 +1,5 @@
 import type { NarrativeEntry } from "@archefict/schema";
-import { createEffect, createSignal, For, on, Show } from "solid-js";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { createEffect, For, on, Show } from "solid-js";
 import { EntryView } from "./EntryView.tsx";
 
 /**
@@ -22,7 +21,6 @@ export function NarrativeFeed(props: {
   onDelete: (id: string) => void;
 }) {
   let bottom: HTMLDivElement | undefined;
-  const [pendingDelete, setPendingDelete] = createSignal<string | null>(null);
 
   createEffect(
     on(
@@ -49,7 +47,7 @@ export function NarrativeFeed(props: {
               entry={entry}
               continued={continuesRun(props.entries[index() - 1], entry)}
               onEdit={(text) => props.onEdit(entry.id, text)}
-              onDelete={() => setPendingDelete(entry.id)}
+              onDelete={() => props.onDelete(entry.id)}
             />
           )}
         </For>
@@ -61,19 +59,6 @@ export function NarrativeFeed(props: {
         </Show>
         <div ref={bottom} />
       </div>
-
-      <ConfirmDialog
-        open={pendingDelete() !== null}
-        title="Delete entry"
-        message="Delete this entry from the timeline? This cannot be undone."
-        confirmLabel="Delete"
-        onConfirm={() => {
-          const id = pendingDelete();
-          setPendingDelete(null);
-          if (id) props.onDelete(id);
-        }}
-        onClose={() => setPendingDelete(null)}
-      />
     </section>
   );
 }

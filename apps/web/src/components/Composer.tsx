@@ -1,6 +1,8 @@
+import Redo2 from "lucide-solid/icons/redo-2";
 import SendHorizontal from "lucide-solid/icons/send-horizontal";
 import Square from "lucide-solid/icons/square";
 import TriangleAlert from "lucide-solid/icons/triangle-alert";
+import Undo2 from "lucide-solid/icons/undo-2";
 import { createEffect, createSignal, on, onMount, Show } from "solid-js";
 import { readDraft, writeDraft } from "../drafts.ts";
 import { fitHeight } from "./auto-grow.ts";
@@ -14,8 +16,12 @@ export function Composer(props: {
   busy: boolean;
   hasKey: boolean;
   error: string | null;
+  canUndo: boolean;
+  canRedo: boolean;
   onSubmit: (text: string) => void;
   onStop: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
 }) {
   const [text, setText] = createSignal(readDraft(props.draftKey));
   let textarea: HTMLTextAreaElement | undefined;
@@ -70,6 +76,30 @@ export function Composer(props: {
             }}
             class="min-h-6 flex-1 resize-none bg-transparent py-1 leading-6 outline-none placeholder:text-fg-muted disabled:opacity-60"
           />
+          {/* Undo replaces the delete confirmation: any entry change can be taken back. */}
+          <div class="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              disabled={!props.canUndo || props.busy}
+              aria-label="Undo"
+              title="Undo (Ctrl+Z)"
+              class="rounded-full p-2 text-fg-muted transition-colors hover:bg-surface-raised hover:text-fg disabled:pointer-events-none disabled:opacity-30"
+              onClick={() => props.onUndo()}
+            >
+              <Undo2 size={16} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              disabled={!props.canRedo || props.busy}
+              aria-label="Redo"
+              title="Redo (Ctrl+Shift+Z)"
+              class="rounded-full p-2 text-fg-muted transition-colors hover:bg-surface-raised hover:text-fg disabled:pointer-events-none disabled:opacity-30"
+              onClick={() => props.onRedo()}
+            >
+              <Redo2 size={16} aria-hidden="true" />
+            </button>
+          </div>
+
           <Show
             when={props.busy}
             fallback={
