@@ -11,6 +11,9 @@ const EDIT_MAX_HEIGHT_PX = 480;
 /**
  * One timeline entry. Hover reveals edit and delete; every entry is editable, the AI's
  * included, because the timeline belongs to the player. Ctrl+Enter saves, Escape cancels.
+ *
+ * Layout: content plus a gutter on the right. The toolbar lives in the gutter and is
+ * sticky, so on a long entry it follows the scroll instead of leaving with the top edge.
  */
 export function EntryView(props: {
   entry: Pick<NarrativeEntry, "id" | "kind" | "text" | "editedAt">;
@@ -33,76 +36,74 @@ export function EntryView(props: {
   }
 
   const editable = () => !props.streaming && props.onEdit !== undefined;
+  const user = () => props.entry.kind === "user";
 
   return (
     <article
-      class="group relative"
-      classList={{
-        "self-end max-w-[85%]": props.entry.kind === "user" && !editing(),
-        "w-full": editing(),
-        "rounded-2xl rounded-br-md bg-surface-raised px-4 py-3": props.entry.kind === "user",
-        "rounded-2xl bg-surface px-4 py-3": editing() && props.entry.kind !== "user",
-        "ring-2 ring-accent/50": editing(),
-        "px-1 py-2": props.entry.kind !== "user" && !editing(),
-        "font-narrative text-[1.05rem] leading-relaxed": props.entry.kind === "ai",
-        "text-fg-muted text-sm italic": props.entry.kind === "system",
-      }}
+      class="group flex items-start gap-2"
       data-kind={props.entry.kind}
       aria-busy={props.streaming ? "true" : undefined}
     >
-      <Show
-        when={editing()}
-        fallback={
-          <p class="whitespace-pre-wrap">
-            {props.entry.text}
-            {props.streaming ? <span class="animate-pulse text-accent">▍</span> : null}
-          </p>
-        }
+      <div
+        class="min-w-0"
+        classList={{
+          "ml-auto max-w-[85%]": user() && !editing(),
+          "w-full": user() && editing(),
+          "rounded-2xl rounded-br-md bg-surface-raised px-4 py-3": user(),
+          "flex-1 px-1 py-2": !user() && !editing(),
+          "flex-1 rounded-2xl bg-surface px-4 py-3": !user() && editing(),
+          "ring-2 ring-accent/50": editing(),
+          "font-narrative text-[1.05rem] leading-relaxed": props.entry.kind === "ai",
+          "text-fg-muted text-sm italic": props.entry.kind === "system",
+        }}
       >
-        <EditBox
-          value={draft()}
-          onInput={setDraft}
-          onSave={save}
-          onCancel={() => setEditing(false)}
-          canSave={draft().trim() !== ""}
-        />
-      </Show>
-
-      <Show when={editable() && !editing()}>
-        <div
-          class="flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
-          classList={{
-            // Outside the bubble, so it never covers a short message.
-            "absolute top-1/2 right-full mr-2 -translate-y-1/2 rounded-lg bg-surface p-0.5 shadow-md":
-              props.entry.kind === "user",
-            // Narrator text is full width: the row below it is reserved, so nothing shifts.
-            "mt-1 h-6": props.entry.kind !== "user",
-          }}
+        <Show
+          when={editing()}
+          fallback={
+            <p class="whitespace-pre-wrap">
+              {props.entry.text}
+              {props.streaming ? <span class="animate-pulse text-accent">▍</span> : null}
+            </p>
+          }
         >
-          <button
-            type="button"
-            class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg"
-            aria-label="Edit entry"
-            title="Edit"
-            onClick={start}
-          >
-            <Pencil size={14} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-danger"
-            aria-label="Delete entry"
-            title="Delete"
-            onClick={() => props.onDelete?.()}
-          >
-            <Trash2 size={14} aria-hidden="true" />
-          </button>
-        </div>
-      </Show>
+          <EditBox
+            value={draft()}
+            onInput={setDraft}
+            onSave={save}
+            onCancel={() => setEditing(false)}
+            canSave={draft().trim() !== ""}
+          />
+        </Show>
+        <Show when={props.entry.editedAt !== undefined && !editing()}>
+          <span class="mt-1 block font-body text-xs not-italic text-fg-muted">edited</span>
+        </Show>
+      </div>
 
-      <Show when={props.entry.editedAt !== undefined && !editing()}>
-        <span class="mt-1 block font-body text-xs not-italic text-fg-muted">edited</span>
-      </Show>
+      {/* Gutter: always present so text columns line up; the toolbar inside sticks. */}
+      <div class="w-14 shrink-0 self-stretch">
+        <Show when={editable() && !editing()}>
+          <div class="sticky top-2 flex gap-0.5 rounded-lg bg-surface p-0.5 opacity-0 shadow-md transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+            <button
+              type="button"
+              class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg"
+              aria-label="Edit entry"
+              title="Edit"
+              onClick={start}
+            >
+              <Pencil size={14} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-danger"
+              aria-label="Delete entry"
+              title="Delete"
+              onClick={() => props.onDelete?.()}
+            >
+              <Trash2 size={14} aria-hidden="true" />
+            </button>
+          </div>
+        </Show>
+      </div>
     </article>
   );
 }
