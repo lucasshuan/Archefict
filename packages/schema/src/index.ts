@@ -46,6 +46,8 @@ export const NarrativeEntry = z.object({
   text: z.string(),
   /** Wall-clock milliseconds. Ordering only; not campaign time. */
   createdAt: z.number().int().nonnegative(),
+  /** Wall-clock milliseconds of the last text edit, if any. */
+  editedAt: z.number().int().nonnegative().optional(),
   provenance: Provenance,
 });
 export type NarrativeEntry = z.infer<typeof NarrativeEntry>;

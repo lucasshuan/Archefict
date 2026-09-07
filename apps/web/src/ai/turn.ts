@@ -1,5 +1,12 @@
 import { streamNarration } from "@archefict/ai";
-import { appendEntry, createEntry, entriesOf, type TimelineDoc } from "@archefict/crdt";
+import {
+  appendEntry,
+  createEntry,
+  deleteEntry,
+  entriesOf,
+  type TimelineDoc,
+  updateEntry,
+} from "@archefict/crdt";
 import type { AiSettings } from "@archefict/schema";
 import type { DocHandle } from "@automerge/automerge-repo";
 import { type Accessor, createSignal, onCleanup } from "solid-js";
@@ -15,6 +22,9 @@ export type TurnRunner = {
   saveState: Accessor<SaveState>;
   submit: (text: string) => Promise<void>;
   stop: () => void;
+  /** Rewrite one entry. Any entry, the AI's included: the timeline is the player's. */
+  edit: (id: string, text: string) => Promise<void>;
+  remove: (id: string) => Promise<void>;
 };
 
 /**
@@ -116,6 +126,16 @@ export function createTurnRunner(options: {
     controller?.abort();
   }
 
+  async function edit(id: string, text: string): Promise<void> {
+    updateEntry(options.timeline, id, text);
+    await persist();
+  }
+
+  async function remove(id: string): Promise<void> {
+    deleteEntry(options.timeline, id);
+    await persist();
+  }
+
   return {
     streamingText,
     error,
@@ -123,6 +143,8 @@ export function createTurnRunner(options: {
     saveState,
     submit,
     stop,
+    edit,
+    remove,
   };
 }
 

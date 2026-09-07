@@ -11,6 +11,7 @@
  * This package knows nothing about the browser or Solid. Adapters are injected by the app.
  */
 import type { NarrativeEntry, Provenance } from "@archefict/schema";
+import { updateText } from "@automerge/automerge";
 import type { AutomergeUrl, DocHandle, Repo } from "@automerge/automerge-repo";
 import { isValidAutomergeUrl } from "@automerge/automerge-repo";
 
@@ -93,6 +94,28 @@ export function createEntry(input: NewEntry): NarrativeEntry {
 export function appendEntry(timeline: DocHandle<TimelineDoc>, entry: NarrativeEntry): void {
   timeline.change((doc) => {
     doc.entries.push(entry);
+  });
+}
+
+/**
+ * Rewrites an entry's text as a minimal text diff, so concurrent edits to the same entry
+ * merge character by character instead of one side losing everything.
+ */
+export function updateEntry(timeline: DocHandle<TimelineDoc>, id: string, text: string): void {
+  const i = timeline.doc().entries.findIndex((entry) => entry.id === id);
+  if (i < 0) return;
+  timeline.change((doc) => {
+    updateText(doc, ["entries", i, "text"], text);
+    const entry = doc.entries[i];
+    if (entry) entry.editedAt = Date.now();
+  });
+}
+
+export function deleteEntry(timeline: DocHandle<TimelineDoc>, id: string): void {
+  const i = timeline.doc().entries.findIndex((entry) => entry.id === id);
+  if (i < 0) return;
+  timeline.change((doc) => {
+    doc.entries.splice(i, 1);
   });
 }
 

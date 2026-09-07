@@ -80,8 +80,9 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [x] Writes are flushed to IndexedDB after every entry and the header shows saving/saved; a reload inside the Repo's save debounce used to lose the entry
 - [x] Unsent composer draft kept per campaign across reloads
 - [x] Sidebar: campaign list with create, switch and two-step delete; Settings entry; mock guest user. Icons via lucide-solid; contrast bug fixed (an unlayered rule in app.css beat every utility); title renames inline. Campaign list is a local registry (`campaign/library.ts`) until it becomes the account's list in Slice 11
+- [x] Entries are editable and deletable in place (hover reveals edit/delete, Ctrl+Enter saves, delete confirms). Edits are Automerge text diffs, so concurrent edits merge; `editedAt` marks them. The AI's entries are editable too: the timeline is the player's
 - [ ] **Play:** one real session with the AI. Log it in `docs/playtests/slice-00.md`.
-- Known gaps: key in plain localStorage; context is the last 40 entries; no meta channel; no undo; no export; Vite dev needs Automerge excluded from pre-bundling (see `vite.config.ts`); ESLint's Solid rules are covered by Biome only until typescript-eslint supports TS 7.1
+- Known gaps: key in plain localStorage; context is the last 40 entries; no meta channel; no undo (edits and deletes are final until the undo manager in Slice 4); no export; Vite dev needs Automerge excluded from pre-bundling (see `vite.config.ts`); ESLint's Solid rules are covered by Biome only until typescript-eslint supports TS 7.1
 
 ### Slice 1 - A sheet you can write
 - [ ] ProseMirror bound to Automerge; one sheet document persisted to IndexedDB **(bet)**

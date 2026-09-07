@@ -3,6 +3,7 @@ import Square from "lucide-solid/icons/square";
 import TriangleAlert from "lucide-solid/icons/triangle-alert";
 import { createEffect, createSignal, on, onMount, Show } from "solid-js";
 import { readDraft, writeDraft } from "../drafts.ts";
+import { fitHeight } from "./auto-grow.ts";
 
 /** Past this height the textarea scrolls instead of growing. About eight lines. */
 const MAX_HEIGHT_PX = 220;
@@ -22,15 +23,7 @@ export function Composer(props: {
   // Persist every keystroke; a reload (ours or Vite's) must not eat a half-written turn.
   createEffect(on(text, (value) => writeDraft(props.draftKey, value), { defer: true }));
 
-  /** Grow with the content, then stop and scroll. Runs on mount too, for a restored draft. */
-  function fit(): void {
-    const el = textarea;
-    if (!el) return;
-    el.style.height = "auto";
-    const overflowing = el.scrollHeight > MAX_HEIGHT_PX;
-    el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT_PX)}px`;
-    el.style.overflowY = overflowing ? "auto" : "hidden";
-  }
+  const fit = () => textarea && fitHeight(textarea, MAX_HEIGHT_PX);
   onMount(fit);
   createEffect(on(text, fit, { defer: true }));
 

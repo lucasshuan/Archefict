@@ -4,9 +4,11 @@ import {
   appendEntry,
   createCampaign,
   createEntry,
+  deleteEntry,
   entriesOf,
   openCampaign,
   renameCampaign,
+  updateEntry,
 } from "./index.ts";
 
 describe("campaign documents", () => {
@@ -57,6 +59,35 @@ describe("campaign documents", () => {
     expect(index.doc().name).toBe("New name");
     renameCampaign(index, "   ");
     expect(index.doc().name).toBe("New name");
+  });
+
+  it("edits an entry's text and marks it edited", () => {
+    const repo = new Repo();
+    const { timeline } = createCampaign(repo, "Edit");
+    const entry = createEntry({
+      kind: "ai",
+      text: "The door creaks.",
+      provenance: { source: "ai" },
+    });
+    appendEntry(timeline, entry);
+    updateEntry(timeline, entry.id, "The door creaks open.");
+    const [edited] = entriesOf(timeline);
+    expect(edited?.text).toBe("The door creaks open.");
+    expect(edited?.editedAt).toBeTypeOf("number");
+    updateEntry(timeline, "missing", "ignored");
+    expect(entriesOf(timeline)).toHaveLength(1);
+  });
+
+  it("deletes an entry by id and ignores unknown ids", () => {
+    const repo = new Repo();
+    const { timeline } = createCampaign(repo, "Delete");
+    const first = createEntry({ kind: "user", text: "one", provenance: { source: "user" } });
+    const second = createEntry({ kind: "user", text: "two", provenance: { source: "user" } });
+    appendEntry(timeline, first);
+    appendEntry(timeline, second);
+    deleteEntry(timeline, first.id);
+    deleteEntry(timeline, "missing");
+    expect(entriesOf(timeline).map((e) => e.text)).toEqual(["two"]);
   });
 
   it("rejects a non-automerge url", async () => {

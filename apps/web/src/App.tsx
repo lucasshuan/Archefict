@@ -115,7 +115,12 @@ function Session(props: {
         <SaveIndicator state={turn.saveState()} />
       </header>
 
-      <NarrativeFeed entries={timeline().entries} streamingText={turn.streamingText()} />
+      <NarrativeFeed
+        entries={timeline().entries}
+        streamingText={turn.streamingText()}
+        onEdit={(id, text) => void turn.edit(id, text)}
+        onDelete={(id) => void turn.remove(id)}
+      />
 
       <Composer
         draftKey={props.handles.timeline.url}
