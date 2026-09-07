@@ -28,6 +28,7 @@ Validation applies only to keys a component claims. Everything else is free.
 - Documents: `campaign-index`, `sheet:<id>`, `timeline:<id>`, `chat:<id>` (chunked), `plugin-state:<id>`. Never one doc per campaign.
 - Security state (membership, grants, keys) lives in Postgres. Never in a CRDT.
 - Canonical rich structure, then serializers, then human views / compact AI view / Markdown export. Markdown is a representation, not storage.
+- Message content and model-response exploration **(bet)**: [`message-response-format.md`](message-response-format.md).
 - Fictional campaign time is its own type. Not `Date`.
 
 ## Write pipeline (the real security boundary)
