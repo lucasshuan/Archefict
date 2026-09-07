@@ -78,6 +78,8 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [x] Tests: schema property test, CRDT round-trip, message mapping, Chromium component test, Playwright persistence + settings
 - [x] `apps/api` (Hono + oRPC on Node 24) and `packages/contract` created early to fix the boundary: health, model catalogue with live prices, OpenAPI document. Narration stays in the browser with the device-owned key
 - [x] Writes are flushed to IndexedDB after every entry and the header shows saving/saved; a reload inside the Repo's save debounce used to lose the entry
+- [x] Unsent composer draft kept per campaign across reloads
+- [x] Sidebar: campaign list with create, switch and two-step delete; Settings entry; mock guest user. Campaign list is a local registry (`campaign/library.ts`) until it becomes the account's list in Slice 11
 - [ ] **Play:** one real session with the AI. Log it in `docs/playtests/slice-00.md`.
 - Known gaps: key in plain localStorage; context is the last 40 entries; no meta channel; no undo; no export; Vite dev needs Automerge excluded from pre-bundling (see `vite.config.ts`); ESLint's Solid rules are covered by Biome only until typescript-eslint supports TS 7.1
 
@@ -91,7 +93,7 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [ ] **Play:** rewrite three characters and one location from a past campaign. Log what the editor cannot express.
 
 ### Slice 2 - A campaign you will not lose
-- [ ] Create, open, list campaigns; `campaign-index` document
+- [x] Create, open, list campaigns; `campaign-index` document (done in Slice 0's sidebar; rename still missing)
 - [ ] Storage persistence request; loud durability warning on local campaign creation
 - [ ] Automatic file backups; "last backed up" indicator
 - [ ] Campaign bundle export and import (documents + assets + manifest)

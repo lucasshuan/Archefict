@@ -45,3 +45,32 @@ test("settings dialog opens, validates the model id, and saves", async ({ page }
   await expect(dialog).toBeHidden();
   await expect(page.getByText("openai/gpt-5-mini")).toBeVisible();
 });
+
+test("campaigns can be created, switched and deleted from the sidebar", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Untitled campaign");
+
+  await page.getByLabel("New campaign name").fill("Greyhaven");
+  await page.getByRole("button", { name: "Create" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Greyhaven");
+
+  const box = page.getByRole("textbox", { name: "What do you do?" });
+  await box.fill("The gates are shut.");
+  await box.press("Enter");
+  await expect(page.getByText("saved", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Untitled campaign", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Untitled campaign");
+  await expect(page.getByText("The gates are shut.")).toBeHidden();
+
+  await page.getByRole("button", { name: "Greyhaven", exact: true }).click();
+  await expect(page.getByText("The gates are shut.")).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Greyhaven");
+
+  await page.getByRole("button", { name: "Delete Greyhaven" }).click();
+  await page.getByRole("button", { name: "Yes, delete" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Untitled campaign");
+  await expect(page.getByRole("button", { name: "Greyhaven", exact: true })).toHaveCount(0);
+});

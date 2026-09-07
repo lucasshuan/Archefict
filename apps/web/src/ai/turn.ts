@@ -2,7 +2,7 @@ import { streamNarration } from "@archefict/ai";
 import { appendEntry, createEntry, entriesOf, type TimelineDoc } from "@archefict/crdt";
 import type { AiSettings } from "@archefict/schema";
 import type { DocHandle } from "@automerge/automerge-repo";
-import { type Accessor, createSignal } from "solid-js";
+import { type Accessor, createSignal, onCleanup } from "solid-js";
 
 export type SaveState = "idle" | "saving" | "saved" | "failed";
 
@@ -36,6 +36,9 @@ export function createTurnRunner(options: {
   const [error, setError] = createSignal<string | null>(null);
   const [saveState, setSaveState] = createSignal<SaveState>("idle");
   let controller: AbortController | null = null;
+
+  // Switching campaigns unmounts the session; a reply still streaming must not land later.
+  onCleanup(() => controller?.abort());
 
   async function persist(): Promise<void> {
     setSaveState("saving");
