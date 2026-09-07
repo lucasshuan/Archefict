@@ -18,6 +18,8 @@ const EDIT_MAX_HEIGHT_PX = 480;
  */
 export function EntryView(props: {
   entry: Pick<NarrativeEntry, "id" | "kind" | "text" | "editedAt">;
+  /** Part of the same run as the entry above: tight spacing, no new-turn gap. */
+  continued?: boolean;
   streaming?: boolean;
   onEdit?: (text: string) => void;
   onDelete?: () => void;
@@ -42,6 +44,7 @@ export function EntryView(props: {
   return (
     <article
       class="group flex items-start gap-2"
+      classList={{ "mt-5": !props.continued, "mt-0": props.continued }}
       data-kind={props.entry.kind}
       aria-busy={props.streaming ? "true" : undefined}
     >
@@ -51,7 +54,7 @@ export function EntryView(props: {
           "ml-auto max-w-[85%]": user() && !editing(),
           "w-full": user() && editing(),
           "rounded-2xl rounded-br-md bg-surface-raised px-4 py-3": user(),
-          "flex-1 px-1 py-2": !user() && !editing(),
+          "flex-1 px-1 py-1.5": !user() && !editing(),
           "flex-1 rounded-2xl bg-surface px-4 py-3": !user() && editing(),
           "ring-2 ring-accent/50": editing(),
           "font-narrative text-[1.05rem] leading-relaxed": props.entry.kind === "ai",
