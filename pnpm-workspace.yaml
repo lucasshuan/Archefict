@@ -1,0 +1,50 @@
+packages:
+  - apps/*
+  - packages/*
+
+# --- Supply chain (see docs/stack.md, hard rules) ---
+nodeLinker: isolated
+# Never resolve a version published less than 3 days ago (minutes). Non-strict: for ranges pnpm picks the
+# newest mature version instead of failing. Strict mode fails on every fresh transitive publish, which is daily.
+minimumReleaseAge: 4320
+minimumReleaseAgeStrict: false
+# Lifecycle scripts do not run unless the package is listed here.
+strictDepBuilds: true
+allowBuilds:
+  # cbor-x falls back to pure JS without its native helper; never run its build.
+  cbor-extract: false
+  lefthook: true
+# No git/tarball/URL sub-dependencies.
+blockExoticSubdeps: true
+
+# --- Single source of truth for versions. Packages reference "catalog:". ---
+catalog:
+  # language / tooling
+  typescript: 7.0.2
+  "@biomejs/biome": 2.5.12
+  turbo: 2.10.12
+  "@types/node": 26.4.1
+  lefthook: 2.1.12
+  # test
+  vitest: 4.1.11
+  "@vitest/browser-playwright": 4.1.11
+  playwright: 1.62.1
+  "@playwright/test": 1.62.1
+  fast-check: 4.9.0
+  "@solidjs/testing-library": 0.8.10
+  "@testing-library/jest-dom": ^6.6.0
+  # web
+  vite: 8.2.2
+  vite-plugin-solid: 2.11.14
+  solid-js: 1.9.15
+  tailwindcss: 4.3.3
+  "@tailwindcss/vite": 4.3.3
+  # data
+  zod: 4.5.4
+  "@automerge/automerge": 3.4.1
+  "@automerge/automerge-repo": 2.5.6
+  "@automerge/automerge-repo-storage-indexeddb": 2.5.6
+  "@automerge/automerge-repo-network-broadcastchannel": 2.5.6
+  # ai
+  ai: 7.0.92
+  "@openrouter/ai-sdk-provider": 3.0.0

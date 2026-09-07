@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/*
+ * Theme contract.
+ *
+ * The semantic custom properties in :root are the theming API. Plugins and user themes
+ * override these and nothing else. Tailwind's default palette is removed below so that
+ * no component can reach for `bg-zinc-900`; utilities only know the semantic tokens.
+ */
+:root {
+  color-scheme: dark;
+
+  --bg: oklch(0.16 0.012 265);
+  --surface: oklch(0.2 0.014 265);
+  --surface-raised: oklch(0.245 0.016 265);
+  --border: oklch(0.32 0.018 265);
+  --fg: oklch(0.93 0.008 85);
+  --fg-muted: oklch(0.68 0.012 85);
+  --accent: oklch(0.78 0.13 70);
+  --accent-fg: oklch(0.18 0.03 70);
+  --danger: oklch(0.68 0.19 25);
+
+  --radius: 0.5rem;
+  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-narrative: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+
+@theme {
+  --color-*: initial;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+
+  --radius-app: var(--radius);
+  --font-body: var(--font-body);
+  --font-narrative: var(--font-narrative);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+textarea,
+input,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+dialog::backdrop {
+  background: oklch(0 0 0 / 0.6);
+}

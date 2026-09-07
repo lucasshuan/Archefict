@@ -1,0 +1,26 @@
+{
+  "name": "archefict",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @archefict/web dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "pnpm --filter @archefict/web test:e2e",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "lefthook": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:"
+  }
+}

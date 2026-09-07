@@ -1,0 +1,106 @@
+import { streamNarration } from "@archefict/ai";
+import { appendEntry, createEntry, entriesOf, type TimelineDoc } from "@archefict/crdt";
+import type { AiSettings } from "@archefict/schema";
+import type { DocHandle } from "@automerge/automerge-repo";
+import { type Accessor, createSignal } from "solid-js";
+
+export type TurnRunner = {
+  /** Text of the reply being streamed, or null when idle. */
+  streamingText: Accessor<string | null>;
+  error: Accessor<string | null>;
+  busy: Accessor<boolean>;
+  submit: (text: string) => Promise<void>;
+  stop: () => void;
+};
+
+/**
+ * One player turn: append the user's entry, then (if a key is set) stream a reply.
+ *
+ * The reply is streamed into a signal, not into Automerge, and written to the document
+ * once, when complete. Streaming token-by-token into a CRDT would bloat its history for no
+ * benefit. The provenance carries the model, the turn id and token usage.
+ */
+export function createTurnRunner(options: {
+  timeline: DocHandle<TimelineDoc>;
+  settings: Accessor<AiSettings>;
+}): TurnRunner {
+  const [streamingText, setStreamingText] = createSignal<string | null>(null);
+  const [error, setError] = createSignal<string | null>(null);
+  let controller: AbortController | null = null;
+
+  async function submit(text: string): Promise<void> {
+    const trimmed = text.trim();
+    if (trimmed === "" || controller !== null) return;
+    setError(null);
+
+    const turnId = crypto.randomUUID();
+    appendEntry(
+      options.timeline,
+      createEntry({ kind: "user", text: trimmed, provenance: { source: "user", turnId } }),
+    );
+
+    const settings = options.settings();
+    if (settings.apiKey === "") return; // Manual mode: the player narrates both sides.
+
+    controller = new AbortController();
+    setStreamingText("");
+    let reply = "";
+
+    try {
+      const narration = streamNarration({
+        apiKey: settings.apiKey,
+        model: settings.model,
+        systemPrompt: settings.systemPrompt,
+        entries: entriesOf(options.timeline),
+        signal: controller.signal,
+      });
+      for await (const chunk of narration.text) {
+        reply += chunk;
+        setStreamingText(reply);
+      }
+      const usage = await narration.usage;
+      commitReply(reply, { model: settings.model, turnId, usage });
+    } catch (caught) {
+      if (controller.signal.aborted) {
+        commitReply(reply, { model: settings.model, turnId });
+      } else {
+        setError(describe(caught));
+      }
+    } finally {
+      controller = null;
+      setStreamingText(null);
+    }
+  }
+
+  function commitReply(
+    reply: string,
+    provenance: {
+      model: string;
+      turnId: string;
+      usage?: { inputTokens?: number; outputTokens?: number };
+    },
+  ): void {
+    if (reply.trim() === "") return;
+    appendEntry(
+      options.timeline,
+      createEntry({ kind: "ai", text: reply, provenance: { source: "ai", ...provenance } }),
+    );
+  }
+
+  function stop(): void {
+    controller?.abort();
+  }
+
+  return {
+    streamingText,
+    error,
+    busy: () => streamingText() !== null,
+    submit,
+    stop,
+  };
+}
+
+function describe(caught: unknown): string {
+  if (caught instanceof Error) return caught.message;
+  return String(caught);
+}

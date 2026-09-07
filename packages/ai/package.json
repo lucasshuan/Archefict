@@ -1,0 +1,23 @@
+{
+  "name": "@archefict/ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@archefict/schema": "workspace:*",
+    "@openrouter/ai-sdk-provider": "catalog:",
+    "ai": "catalog:"
+  },
+  "devDependencies": {
+    "@archefict/config": "workspace:*",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,15 @@
+# Hooks go through corepack so the pinned pnpm (package.json "packageManager") runs even
+# when the global pnpm is a different major. See README, "Run".
+pre-commit:
+  jobs:
+    - name: biome
+      glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
+      run: corepack pnpm exec biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+
+pre-push:
+  jobs:
+    - name: typecheck
+      run: corepack pnpm typecheck
+    - name: test
+      run: corepack pnpm test

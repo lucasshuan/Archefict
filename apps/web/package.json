@@ -1,0 +1,39 @@
+{
+  "name": "@archefict/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@archefict/ai": "workspace:*",
+    "@archefict/crdt": "workspace:*",
+    "@archefict/schema": "workspace:*",
+    "@automerge/automerge": "catalog:",
+    "@automerge/automerge-repo": "catalog:",
+    "@automerge/automerge-repo-network-broadcastchannel": "catalog:",
+    "@automerge/automerge-repo-storage-indexeddb": "catalog:",
+    "solid-js": "catalog:"
+  },
+  "devDependencies": {
+    "@archefict/config": "workspace:*",
+    "@playwright/test": "catalog:",
+    "@solidjs/testing-library": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "playwright": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:",
+    "vitest": "catalog:"
+  }
+}
