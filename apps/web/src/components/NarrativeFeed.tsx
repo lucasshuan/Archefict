@@ -1,5 +1,6 @@
+import { splitReply } from "@archefict/ai";
 import type { NarrativeEntry } from "@archefict/schema";
-import { createEffect, For, on, Show } from "solid-js";
+import { createEffect, createMemo, For, Index, on, Show } from "solid-js";
 import { EntryView } from "./EntryView.tsx";
 
 /**
@@ -21,6 +22,19 @@ export function NarrativeFeed(props: {
   onDelete: (id: string) => void;
 }) {
   let bottom: HTMLDivElement | undefined;
+
+  /**
+   * The reply in flight, already cut the way it will be stored (one part per line). Parts
+   * that have ended in a line break mount as their own entries while later text still
+   * streams, so the feed grows entry by entry instead of showing one block that shatters
+   * at the end. Nothing is written until the reply completes; this is only how it looks.
+   * An empty stream is one empty part, so the caret shows while the model thinks.
+   */
+  const streamingParts = createMemo<readonly string[] | null>(() => {
+    if (props.streamingText === null) return null;
+    const parts = splitReply(props.streamingText);
+    return parts.length > 0 ? parts : [""];
+  });
 
   createEffect(
     on(
@@ -51,11 +65,26 @@ export function NarrativeFeed(props: {
             />
           )}
         </For>
-        <Show when={props.streamingText !== null}>
-          <EntryView
-            entry={{ id: "streaming", kind: "ai", text: props.streamingText ?? "" }}
-            streaming
-          />
+        <Show when={streamingParts()}>
+          {(parts) => (
+            // Index, not For: parts are keyed by position, so a settled part keeps its DOM
+            // and only the last one re-renders as tokens arrive.
+            <Index each={parts()}>
+              {(text, i) => (
+                <EntryView
+                  entry={{
+                    id: `streaming-${i}`,
+                    kind: "ai",
+                    get text() {
+                      return text();
+                    },
+                  }}
+                  continued={i > 0}
+                  streaming={i === parts().length - 1}
+                />
+              )}
+            </Index>
+          )}
         </Show>
         <div ref={bottom} />
       </div>

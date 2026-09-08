@@ -1,7 +1,7 @@
 import { splitReply, streamNarration } from "@archefict/ai";
 import { createEntry } from "@archefict/crdt";
 import type { AiSettings, NarrativeEntry } from "@archefict/schema";
-import { type Accessor, createSignal, onCleanup } from "solid-js";
+import { type Accessor, batch, createSignal, onCleanup } from "solid-js";
 import type { TimelineController } from "../campaign/timeline.ts";
 
 export type TurnRunner = {
@@ -103,15 +103,19 @@ export function createTurnRunner(options: {
     const parts = splitReply(reply);
     if (parts.length === 0) return;
     const { usage, ...shared } = provenance;
-    await options.timeline.append(
-      parts.map((text, i) =>
-        createEntry({
-          kind: "ai",
-          text,
-          provenance: { source: "ai", ...shared, ...(i === 0 && usage ? { usage } : {}) },
-        }),
-      ),
+    const entries = parts.map((text, i) =>
+      createEntry({
+        kind: "ai",
+        text,
+        provenance: { source: "ai", ...shared, ...(i === 0 && usage ? { usage } : {}) },
+      }),
     );
+    // The feed renders the in-flight reply as provisional entries. Drop them in the same
+    // batch that writes the real ones, or both show for as long as the flush takes.
+    await batch(() => {
+      setStreamingText(null);
+      return options.timeline.append(entries);
+    });
   }
 
   function stop(): void {
