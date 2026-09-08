@@ -1,7 +1,9 @@
 import type { ModelInfo } from "@archefict/contract";
 import { AiSettings } from "@archefict/schema";
 import Bot from "lucide-solid/icons/bot";
+import Feather from "lucide-solid/icons/feather";
 import Info from "lucide-solid/icons/info";
+import Plug from "lucide-solid/icons/plug";
 import {
   createResource,
   createSignal,
@@ -122,7 +124,7 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
         >
           <Switch>
             <Match when={tab() === "ai"}>
-              <Section title="Provider">
+              <Section title="Provider" icon={Plug}>
                 <Field
                   id="settings-api-key"
                   label="OpenRouter API key"
@@ -140,7 +142,7 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
                 </Field>
               </Section>
 
-              <Section title="Narrator">
+              <Section title="Narrator" icon={Feather}>
                 <ModelField
                   value={narratorModel()}
                   models={models()}
@@ -194,14 +196,29 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
   );
 }
 
-/** A titled group of fields. Sections are separated by space, not lines. */
-function Section(props: { title: string; children: JSX.Element }) {
+/**
+ * A titled group of fields, headed by an icon, a label and a rule running to the edge.
+ * The rule is the one deliberate line in the app: inside a single scrolling column,
+ * surface tone alone does not read as a break.
+ */
+function Section(props: {
+  title: string;
+  icon: (props: { size?: number; class?: string }) => JSX.Element;
+  children: JSX.Element;
+}) {
   const heading = createUniqueId();
   return (
     <section class="flex flex-col gap-4" aria-labelledby={heading}>
-      <h2 id={heading} class="text-xs font-semibold uppercase tracking-wider text-fg-muted">
-        {props.title}
-      </h2>
+      <div class="flex items-center gap-3">
+        <h2
+          id={heading}
+          class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-fg-muted"
+        >
+          <props.icon size={14} class="text-fg-subtle" />
+          {props.title}
+        </h2>
+        <span class="h-px flex-1 bg-border" aria-hidden="true" />
+      </div>
       {props.children}
     </section>
   );
