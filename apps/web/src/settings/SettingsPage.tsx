@@ -199,7 +199,8 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
 /**
  * A titled group of fields, headed by an icon, a label and a rule running to the edge.
  * The rule is the one deliberate line in the app: inside a single scrolling column,
- * surface tone alone does not read as a break.
+ * surface tone alone does not read as a break. Heading and icon take the accent, the
+ * rule stays in the border tone, so the label is the bright thing and the line recedes.
  */
 function Section(props: {
   title: string;
@@ -212,7 +213,7 @@ function Section(props: {
       <div class="flex items-center gap-3">
         <h2
           id={heading}
-          class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-fg-faint"
+          class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent"
         >
           <props.icon size={14} />
           {props.title}
@@ -306,17 +307,18 @@ function ModelField(props: {
       <datalist id="archefict-models">
         <For each={props.models}>{(model) => <option value={model.id}>{model.name}</option>}</For>
       </datalist>
-      {/* The one description that stays on the page: it describes the chosen option. */}
+      {/* The one description that stays on the page: it describes the chosen option. Accent,
+          like a section heading: it is metadata about the value, not the value. */}
       <Show
         when={selected()}
         fallback={
-          <span class="text-xs text-fg-faint">
+          <span class="text-xs text-accent">
             Not in the catalogue. It will still be sent as typed.
           </span>
         }
       >
         {(model) => (
-          <span class="text-xs text-fg-faint">
+          <span class="text-xs text-accent">
             {model().name}: ${model().pricing.input}/M in, ${model().pricing.output}/M out
             <Show when={model().contextLength > 0}>
               , {Math.round(model().contextLength / 1000)}k context

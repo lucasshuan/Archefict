@@ -17,8 +17,6 @@
   --fg: oklch(0.93 0.008 85);
   --fg-muted: oklch(0.68 0.012 85);
   --fg-subtle: oklch(0.6 0.012 85);
-  /* Section headings and captions, kept equal to the rule that separates them. */
-  --fg-faint: var(--border);
   --accent: oklch(0.78 0.13 70);
   --accent-fg: oklch(0.18 0.03 70);
   --danger: oklch(0.62 0.19 25);
@@ -46,7 +44,6 @@
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
   --color-fg-subtle: var(--fg-subtle);
-  --color-fg-faint: var(--fg-faint);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
   --color-danger: var(--danger);
