@@ -59,25 +59,54 @@ export function Composer(props: {
           )}
         </Show>
 
-        <div class="flex items-end gap-2 rounded-3xl bg-surface py-2 pr-2 pl-5 shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-accent/40">
-          <textarea
-            ref={textarea}
-            aria-label="What do you do?"
-            placeholder="What do you do?"
-            rows={1}
-            value={text()}
-            disabled={props.busy}
-            onInput={(event) => setText(event.currentTarget.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                send();
+        <div class="flex items-end gap-1">
+          <div class="flex min-w-0 flex-1 items-end gap-2 rounded-3xl bg-surface py-2 pr-2 pl-5 shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-accent/40">
+            <textarea
+              ref={textarea}
+              aria-label="What do you do?"
+              placeholder="What do you do?"
+              rows={1}
+              value={text()}
+              disabled={props.busy}
+              onInput={(event) => setText(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  send();
+                }
+              }}
+              class="min-h-6 flex-1 resize-none bg-transparent py-1 leading-6 outline-none placeholder:text-fg-muted disabled:opacity-60"
+            />
+            <Show
+              when={props.busy}
+              fallback={
+                <button
+                  type="submit"
+                  disabled={empty()}
+                  aria-label="Send"
+                  title="Send (Enter)"
+                  class="shrink-0 rounded-full bg-accent p-2 text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-40"
+                >
+                  <SendHorizontal size={16} aria-hidden="true" />
+                </button>
               }
-            }}
-            class="min-h-6 flex-1 resize-none bg-transparent py-1 leading-6 outline-none placeholder:text-fg-muted disabled:opacity-60"
-          />
-          {/* Undo replaces the delete confirmation: any entry change can be taken back. */}
-          <div class="flex shrink-0 items-center gap-0.5">
+            >
+              <button
+                type="button"
+                aria-label="Stop"
+                title="Stop"
+                class="shrink-0 rounded-full bg-surface-raised p-2 text-fg-muted hover:text-fg"
+                onClick={() => props.onStop()}
+              >
+                <Square size={14} aria-hidden="true" />
+              </button>
+            </Show>
+          </div>
+
+          {/* Beside the pill, not inside it: the pill is for composing, these act on the
+              timeline. pb-2 lines them up with the send button, which sits inside the pill's
+              own padding. Undo replaces the delete confirmation. */}
+          <div class="flex shrink-0 items-center gap-0.5 pb-2">
             <button
               type="button"
               disabled={!props.canUndo || props.busy}
@@ -99,31 +128,6 @@ export function Composer(props: {
               <Redo2 size={16} aria-hidden="true" />
             </button>
           </div>
-
-          <Show
-            when={props.busy}
-            fallback={
-              <button
-                type="submit"
-                disabled={empty()}
-                aria-label="Send"
-                title="Send (Enter)"
-                class="shrink-0 rounded-full bg-accent p-2 text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-40"
-              >
-                <SendHorizontal size={16} aria-hidden="true" />
-              </button>
-            }
-          >
-            <button
-              type="button"
-              aria-label="Stop"
-              title="Stop"
-              class="shrink-0 rounded-full bg-surface-raised p-2 text-fg-muted hover:text-fg"
-              onClick={() => props.onStop()}
-            >
-              <Square size={14} aria-hidden="true" />
-            </button>
-          </Show>
         </div>
       </div>
     </form>
