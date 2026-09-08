@@ -21,6 +21,8 @@ export const GUEST: MockUser = {
 export function Sidebar(props: {
   campaigns: readonly CampaignSummary[];
   activeUrl: string | null;
+  /** The settings page is open, so no campaign is the current one. */
+  settingsActive: boolean;
   user: MockUser;
   open: boolean;
   onClose: () => void;
@@ -136,7 +138,12 @@ export function Sidebar(props: {
         <div class="p-2">
           <button
             type="button"
-            class="flex w-full items-center gap-2 rounded-app px-2 py-1.5 text-left text-sm text-fg-muted hover:bg-surface-raised hover:text-fg"
+            class="flex w-full items-center gap-2 rounded-app px-2 py-1.5 text-left text-sm hover:bg-surface-raised hover:text-fg"
+            classList={{
+              "bg-surface-raised text-fg": props.settingsActive,
+              "text-fg-muted": !props.settingsActive,
+            }}
+            aria-current={props.settingsActive ? "page" : undefined}
             onClick={() => {
               props.onOpenSettings();
               props.onClose();

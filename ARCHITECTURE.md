@@ -46,7 +46,7 @@ src/<feature>/     later: sheets/, timeline/, plugins/
 
 - Solid 1.x. Signals and props. `createDocSignal(handle)` is how a document reaches the UI. No other reactive store until a slice proves the need.
 - The session is keyed by campaign. Switching remounts it. Per-campaign state lives inside `Session`.
-- A screen with its own sections is a full-page view over the shell, not a modal, and the session behind it goes `inert`. Modals are for one short decision. Pages commit their edits when you leave; only an invalid value keeps you there.
+- A screen with its own sections is a page in the shell column, reached from the sidebar, with no back button of its own. The campaign column stays mounted and hidden so a streaming reply survives the detour. Modals are for one short decision. A page commits what is valid as it unmounts.
 - All timeline writes go through `campaign/timeline.ts`. It owns persistence, save state and the 50-step undo history, which is per device in localStorage. Destructive actions are undoable, so they do not ask for confirmation.
 - Styling: Tailwind utilities on semantic tokens only (`bg-surface`, `text-fg-muted`). The palette is removed; `bg-zinc-900` does not compile. Cursors and other interaction defaults come from the base layer, never per element.
 - Dark is the theme. The tokens are the future plugin theming API.

@@ -1,6 +1,5 @@
 import type { ModelInfo } from "@archefict/contract";
 import { AiSettings } from "@archefict/schema";
-import ArrowLeft from "lucide-solid/icons/arrow-left";
 import Bot from "lucide-solid/icons/bot";
 import HardDrive from "lucide-solid/icons/hard-drive";
 import Info from "lucide-solid/icons/info";
@@ -39,7 +38,6 @@ export function SettingsPage(props: {
   /** Whether the browser promised not to evict this origin's storage. */
   persisted: boolean;
   onSave: (next: AiSettings) => void;
-  onClose: () => void;
 }) {
   let page: HTMLDivElement | undefined;
   const [tab, setTab] = createSignal<SettingsTab>("ai");
@@ -49,15 +47,12 @@ export function SettingsPage(props: {
   const [problem, setProblem] = createSignal<string | null>(null);
   const [catalogue] = createResource(loadModels);
 
-  onMount(() => {
-    page?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      leave();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    onCleanup(() => document.removeEventListener("keydown", onKeyDown));
+  onMount(() => page?.focus());
+
+  // Leaving is navigation now, through the sidebar, so there is no moment to commit on.
+  // Save what is valid as the page goes away; the footer stays for an explicit save.
+  onCleanup(() => {
+    save();
   });
 
   const models = () => catalogue()?.models ?? FALLBACK_MODELS;
@@ -75,22 +70,17 @@ export function SettingsPage(props: {
     );
   };
 
-  /** Returns false when the draft is invalid, leaving the reason on screen. */
-  function save(): boolean {
-    if (!dirty()) return true;
+  /** Shows the reason and keeps the draft when it does not parse. */
+  function save(): void {
+    if (!dirty()) return;
     const parsed = AiSettings.safeParse(draft());
     if (!parsed.success) {
       setProblem(parsed.error.issues.map((issue) => issue.message).join("; "));
       setTab("ai");
-      return false;
+      return;
     }
     setProblem(null);
     props.onSave(parsed.data);
-    return true;
-  }
-
-  function leave(): void {
-    if (save()) props.onClose();
   }
 
   return (
@@ -98,18 +88,10 @@ export function SettingsPage(props: {
       ref={page}
       tabIndex={-1}
       aria-label="Settings"
-      class="fixed inset-0 z-40 flex flex-col bg-bg outline-none"
+      class="flex min-w-0 flex-1 flex-col outline-none"
     >
-      <header class="flex items-center gap-3 px-4 py-3">
-        <button
-          type="button"
-          class="rounded-app p-1.5 text-fg-muted hover:bg-surface-raised hover:text-fg"
-          aria-label="Back to campaign"
-          title="Back (Escape)"
-          onClick={leave}
-        >
-          <ArrowLeft size={18} aria-hidden="true" />
-        </button>
+      {/* pl-14 clears the fixed sidebar toggle, exactly like the campaign header. */}
+      <header class="flex items-center py-3 pr-4 pl-14">
         <h1 class="text-base font-semibold tracking-wide">Settings</h1>
       </header>
 

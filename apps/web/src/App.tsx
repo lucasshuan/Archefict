@@ -51,11 +51,15 @@ function Shell(props: { library: Library; persisted: boolean }) {
       <SidebarToggle open={sidebarOpen()} onToggle={() => setSidebarOpen((open) => !open)} />
       <Sidebar
         campaigns={props.library.campaigns()}
-        activeUrl={props.library.active()?.index.url ?? null}
+        activeUrl={settingsOpen() ? null : (props.library.active()?.index.url ?? null)}
+        settingsActive={settingsOpen()}
         user={GUEST}
         open={sidebarOpen()}
         onClose={() => setSidebarOpen(false)}
-        onSelect={props.library.select}
+        onSelect={(url) => {
+          setSettingsOpen(false);
+          props.library.select(url);
+        }}
         onCreate={(name) => void props.library.create(name)}
         onDelete={(url) => void props.library.remove(url)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -68,6 +72,7 @@ function Shell(props: { library: Library; persisted: boolean }) {
           <Session
             handles={handles}
             settings={settingsStore}
+            hidden={settingsOpen()}
             blocked={sidebarOpen() || settingsOpen()}
             onRename={(name) => void props.library.rename(name)}
           />
@@ -79,7 +84,6 @@ function Shell(props: { library: Library; persisted: boolean }) {
           settings={settingsStore.settings()}
           persisted={props.persisted}
           onSave={(next) => settingsStore.save(next)}
-          onClose={() => setSettingsOpen(false)}
         />
       </Show>
     </div>
@@ -89,7 +93,9 @@ function Shell(props: { library: Library; persisted: boolean }) {
 function Session(props: {
   handles: CampaignHandles;
   settings: SettingsStore;
-  /** The drawer or the settings page is covering the session: no input, no shortcuts. */
+  /** Another page has the column. Kept mounted so a streaming reply survives the detour. */
+  hidden: boolean;
+  /** The drawer or another page is over the session: no input, no shortcuts. */
   blocked: boolean;
   onRename: (name: string) => void;
 }) {
@@ -129,7 +135,12 @@ function Session(props: {
   });
 
   return (
-    <main class="flex min-w-0 flex-1 flex-col" inert={props.blocked}>
+    // The hidden attribute would lose to the flex utility, so swap the display class.
+    <main
+      class="min-w-0 flex-1 flex-col"
+      classList={{ flex: !props.hidden, hidden: props.hidden }}
+      inert={props.blocked}
+    >
       <header class="flex items-center gap-2 py-3 pl-14 pr-4">
         <EditableTitle value={index().name} onCommit={props.onRename} />
         <SaveIndicator state={timeline.saveState()} />
