@@ -81,10 +81,12 @@ export function EntryView(props: {
       </div>
 
       {/* Gutter: always present so text columns line up. The toolbar sits at the entry's
-          bottom edge and sticks there, so it stays in view while a long entry scrolls. */}
+          bottom edge and sticks there while a long entry scrolls. The offset is negative to
+          cancel most of the feed's bottom padding, which otherwise parks it well above the
+          visible bottom edge. */}
       <div class="flex w-14 shrink-0 flex-col justify-end self-stretch">
         <Show when={editable() && !editing()}>
-          <div class="sticky bottom-2 flex gap-0.5 rounded-lg bg-surface p-0.5 opacity-0 shadow-md transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <div class="sticky -bottom-2 flex gap-0.5 rounded-lg bg-surface p-0.5 opacity-0 shadow-md transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
             <button
               type="button"
               class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg"
