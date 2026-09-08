@@ -43,7 +43,7 @@ export function EntryView(props: {
 
   return (
     <article
-      class="group flex items-start gap-2"
+      class="group flex items-start"
       classList={{ "mt-5": !props.continued, "mt-0": props.continued }}
       data-kind={props.entry.kind}
       aria-busy={props.streaming ? "true" : undefined}
@@ -53,8 +53,9 @@ export function EntryView(props: {
         classList={{
           "ml-auto max-w-[85%]": user() && !editing(),
           "w-full": user() && editing(),
-          "rounded-2xl rounded-br-md bg-surface-raised px-4 py-3": user(),
-          "flex-1 px-1 py-1.5": !user() && !editing(),
+          "rounded-2xl rounded-br-none bg-surface-raised px-4 py-3": user(),
+          "flex-1 rounded-xl rounded-br-none px-3 py-1.5 transition-colors group-hover:bg-surface group-focus-within:bg-surface motion-reduce:transition-none":
+            !user() && !editing(),
           "flex-1 rounded-2xl bg-surface px-4 py-3": !user() && editing(),
           "ring-2 ring-accent/50": editing(),
           "font-narrative text-[1.05rem] leading-relaxed": props.entry.kind === "ai",
@@ -86,7 +87,10 @@ export function EntryView(props: {
           visible bottom edge. */}
       <div class="flex w-14 shrink-0 flex-col justify-end self-stretch">
         <Show when={editable() && !editing()}>
-          <div class="sticky -bottom-2 flex gap-0.5 rounded-lg bg-surface p-0.5 opacity-0 shadow-md transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <div
+            class="sticky -bottom-2 flex gap-0.5 rounded-lg rounded-l-none p-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
+            classList={{ "bg-surface-raised": user(), "bg-surface": !user() }}
+          >
             <button
               type="button"
               class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg"
