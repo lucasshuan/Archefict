@@ -53,8 +53,9 @@ export function EntryView(props: {
         classList={{
           "ml-auto max-w-[85%]": user() && !editing(),
           "w-full": user() && editing(),
-          "rounded-2xl rounded-br-none bg-surface-raised px-4 py-3": user(),
-          "flex-1 rounded-xl rounded-br-none px-3 py-1.5 transition-colors group-hover:bg-surface group-focus-within:bg-surface motion-reduce:transition-none":
+          "rounded-2xl bg-surface-raised px-4 py-3 transition-[border-radius] duration-200 ease-out group-hover:rounded-br-none group-focus-within:rounded-br-none motion-reduce:transition-none":
+            user(),
+          "flex-1 rounded-xl px-3 py-1.5 transition-[background-color,border-radius] duration-200 ease-out group-hover:rounded-br-none group-hover:bg-surface group-focus-within:rounded-br-none group-focus-within:bg-surface motion-reduce:transition-none":
             !user() && !editing(),
           "flex-1 rounded-2xl bg-surface px-4 py-3": !user() && editing(),
           "ring-2 ring-accent/50": editing(),
@@ -84,11 +85,13 @@ export function EntryView(props: {
       {/* Gutter: always present so text columns line up. The toolbar sits at the entry's
           bottom edge and sticks there while a long entry scrolls. The offset is negative to
           cancel most of the feed's bottom padding, which otherwise parks it well above the
-          visible bottom edge. */}
+          visible bottom edge. On hover it slides out from under the entry's edge while that
+          corner squares off, so the two read as one shape arriving, not a card fading in.
+          Pointer events are off while hidden: the hidden position overlaps the entry. */}
       <div class="flex w-14 shrink-0 flex-col justify-end self-stretch">
         <Show when={editable() && !editing()}>
           <div
-            class="sticky -bottom-2 flex gap-0.5 rounded-lg rounded-l-none p-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
+            class="pointer-events-none sticky -bottom-2 flex -translate-x-1.5 gap-0.5 rounded-lg rounded-l-none p-0.5 opacity-0 transition-[opacity,translate] duration-200 ease-out group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 motion-reduce:translate-x-0 motion-reduce:transition-none"
             classList={{ "bg-surface-raised": user(), "bg-surface": !user() }}
           >
             <button
