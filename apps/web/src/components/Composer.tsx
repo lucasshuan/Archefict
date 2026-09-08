@@ -14,7 +14,8 @@ export function Composer(props: {
   /** Identifies the campaign whose unsent draft this composer keeps across reloads. */
   draftKey: string;
   busy: boolean;
-  hasKey: boolean;
+  /** An empty send would ask the narrator to continue. False when that would do nothing. */
+  canContinue: boolean;
   error: string | null;
   canUndo: boolean;
   canRedo: boolean;
@@ -35,8 +36,11 @@ export function Composer(props: {
 
   const empty = () => text().trim() === "";
 
+  // An empty send is a continue: it asks the narrator to carry on without adding a line.
+  const idle = () => props.busy || (empty() && !props.canContinue);
+
   function send(): void {
-    if (empty() || props.busy) return;
+    if (idle()) return;
     props.onSubmit(text());
     setText("");
   }
@@ -82,9 +86,9 @@ export function Composer(props: {
               fallback={
                 <button
                   type="submit"
-                  disabled={empty()}
-                  aria-label="Send"
-                  title="Send (Enter)"
+                  disabled={idle()}
+                  aria-label={empty() ? "Continue" : "Send"}
+                  title={empty() ? "Continue the story (Enter)" : "Send (Enter)"}
                   class="shrink-0 rounded-full bg-accent p-2 text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-40"
                 >
                   <SendHorizontal size={16} aria-hidden="true" />

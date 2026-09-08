@@ -34,17 +34,26 @@ export function createTurnRunner(options: {
   // Switching campaigns unmounts the session; a reply still streaming must not land later.
   onCleanup(() => controller?.abort());
 
+  /**
+   * A turn. With text, the player entry is appended and the narrator answers it. With none,
+   * this is a continue: nothing is written and the narrator picks up from where the story
+   * already stands.
+   */
   async function submit(text: string): Promise<void> {
+    if (controller !== null) return;
     const trimmed = text.trim();
-    if (trimmed === "" || controller !== null) return;
+    const settings = options.settings();
+    // Nothing to say, and nothing to continue from or no key to continue with.
+    if (trimmed === "" && (settings.apiKey === "" || options.entries().length === 0)) return;
     setError(null);
 
     const turnId = crypto.randomUUID();
-    await options.timeline.append([
-      createEntry({ kind: "user", text: trimmed, provenance: { source: "user", turnId } }),
-    ]);
+    if (trimmed !== "") {
+      await options.timeline.append([
+        createEntry({ kind: "user", text: trimmed, provenance: { source: "user", turnId } }),
+      ]);
+    }
 
-    const settings = options.settings();
     if (settings.apiKey === "") return; // Manual mode: the player narrates both sides.
 
     controller = new AbortController();

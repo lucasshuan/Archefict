@@ -156,7 +156,7 @@ function Session(props: {
       <Composer
         draftKey={props.handles.timeline.url}
         busy={turn.busy()}
-        hasKey={props.settings.settings().apiKey !== ""}
+        canContinue={props.settings.settings().apiKey !== "" && doc().entries.length > 0}
         error={turn.error() ?? timeline.error()}
         canUndo={timeline.canUndo()}
         canRedo={timeline.canRedo()}
