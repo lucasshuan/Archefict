@@ -1,10 +1,7 @@
 import type { ModelInfo } from "@archefict/contract";
 import { AiSettings } from "@archefict/schema";
 import Bot from "lucide-solid/icons/bot";
-import HardDrive from "lucide-solid/icons/hard-drive";
 import Info from "lucide-solid/icons/info";
-import KeyRound from "lucide-solid/icons/key-round";
-import ScrollText from "lucide-solid/icons/scroll-text";
 import {
   createResource,
   createSignal,
@@ -19,26 +16,19 @@ import {
 } from "solid-js";
 import { FALLBACK_MODELS, loadModels } from "../api/models.ts";
 
-const TABS = [
-  { id: "ai", label: "AI" },
-  { id: "data", label: "Data" },
-] as const;
+/** Icons live on tabs. Fields are plain labels; sections are plain headings. */
+const TABS = [{ id: "ai", label: "AI", icon: Bot }] as const;
 
 type SettingsTab = (typeof TABS)[number]["id"];
 
 /**
- * A full page rather than a modal: settings will keep growing (appearance, account,
- * plugins), and tabs need room. The campaign behind it is made inert by the shell.
+ * A page in the shell, reached from the sidebar. Tabs are the top level; inside a tab,
+ * fields are grouped into titled sections.
  *
- * Edits are committed when you leave, not discarded, so a half-typed key is never lost.
- * Leaving with an invalid value keeps you here with the reason shown.
+ * Edits are committed as the page goes away, so a half-typed key is never lost. An invalid
+ * value keeps the draft and shows the reason.
  */
-export function SettingsPage(props: {
-  settings: AiSettings;
-  /** Whether the browser promised not to evict this origin's storage. */
-  persisted: boolean;
-  onSave: (next: AiSettings) => void;
-}) {
+export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSettings) => void }) {
   let page: HTMLDivElement | undefined;
   const [tab, setTab] = createSignal<SettingsTab>("ai");
   const [apiKey, setApiKey] = createSignal(props.settings.apiKey);
@@ -49,7 +39,7 @@ export function SettingsPage(props: {
 
   onMount(() => page?.focus());
 
-  // Leaving is navigation now, through the sidebar, so there is no moment to commit on.
+  // Leaving is navigation, through the sidebar, so there is no moment to commit on.
   // Save what is valid as the page goes away; the footer stays for an explicit save.
   onCleanup(() => {
     save();
@@ -107,13 +97,14 @@ export function SettingsPage(props: {
                   id={`settings-tab-${entry.id}`}
                   aria-selected={selected()}
                   aria-controls={`settings-panel-${entry.id}`}
-                  class="rounded-app px-3 py-1.5 text-sm transition-colors"
+                  class="flex items-center gap-1.5 rounded-app px-3 py-1.5 text-sm transition-colors"
                   classList={{
                     "bg-surface-raised text-fg": selected(),
                     "text-fg-muted hover:bg-surface hover:text-fg": !selected(),
                   }}
                   onClick={() => setTab(entry.id)}
                 >
+                  <entry.icon size={14} aria-hidden="true" />
                   {entry.label}
                 </button>
               );
@@ -124,64 +115,53 @@ export function SettingsPage(props: {
 
       <div class="min-h-0 flex-1 overflow-y-auto px-4 py-5">
         <div
-          class="mx-auto flex max-w-page flex-col gap-5"
+          class="mx-auto flex max-w-page flex-col gap-8"
           role="tabpanel"
           id={`settings-panel-${tab()}`}
           aria-labelledby={`settings-tab-${tab()}`}
         >
           <Switch>
             <Match when={tab() === "ai"}>
-              <Field
-                id="settings-api-key"
-                icon={<KeyRound size={14} aria-hidden="true" />}
-                label="OpenRouter API key"
-                hint="Stored only in this browser. Calls go straight from here to OpenRouter."
-              >
-                <input
+              <Section title="Provider">
+                <Field
                   id="settings-api-key"
-                  type="password"
-                  autocomplete="off"
-                  value={apiKey()}
-                  onInput={(event) => setApiKey(event.currentTarget.value)}
-                  placeholder="sk-or-…"
-                  class="rounded-xl bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50"
+                  label="OpenRouter API key"
+                  hint="Stored only in this browser. Calls go straight from here to OpenRouter."
+                >
+                  <input
+                    id="settings-api-key"
+                    type="password"
+                    autocomplete="off"
+                    value={apiKey()}
+                    onInput={(event) => setApiKey(event.currentTarget.value)}
+                    placeholder="sk-or-…"
+                    class="rounded-xl bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50"
+                  />
+                </Field>
+              </Section>
+
+              <Section title="Narrator">
+                <ModelField
+                  value={narratorModel()}
+                  models={models()}
+                  offline={catalogue()?.source === "fallback"}
+                  onInput={setNarratorModel}
                 />
-              </Field>
 
-              <ModelField
-                value={narratorModel()}
-                models={models()}
-                offline={catalogue()?.source === "fallback"}
-                onInput={setNarratorModel}
-              />
-
-              <Field
-                id="settings-system-prompt"
-                icon={<ScrollText size={14} aria-hidden="true" />}
-                label="Narrator instructions"
-                hint="Sent as the system prompt on every turn."
-              >
-                <textarea
+                <Field
                   id="settings-system-prompt"
-                  rows={8}
-                  value={systemPrompt()}
-                  onInput={(event) => setSystemPrompt(event.currentTarget.value)}
-                  class="resize-y rounded-xl bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50"
-                />
-              </Field>
-            </Match>
-
-            <Match when={tab() === "data"}>
-              <InfoRow
-                icon={<HardDrive size={14} aria-hidden="true" />}
-                label="Local storage"
-                value={props.persisted ? "Persistent" : "Best-effort"}
-                hint={
-                  props.persisted
-                    ? "The browser agreed to keep this data until you delete it."
-                    : "The browser may evict this data when disk space runs low. Export a campaign before clearing site data."
-                }
-              />
+                  label="Instructions"
+                  hint="Sent as the system prompt on every turn."
+                >
+                  <textarea
+                    id="settings-system-prompt"
+                    rows={8}
+                    value={systemPrompt()}
+                    onInput={(event) => setSystemPrompt(event.currentTarget.value)}
+                    class="resize-y rounded-xl bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50"
+                  />
+                </Field>
+              </Section>
             </Match>
           </Switch>
 
@@ -214,38 +194,32 @@ export function SettingsPage(props: {
   );
 }
 
+/** A titled group of fields. Sections are separated by space, not lines. */
+function Section(props: { title: string; children: JSX.Element }) {
+  const heading = createUniqueId();
+  return (
+    <section class="flex flex-col gap-4" aria-labelledby={heading}>
+      <h2 id={heading} class="text-xs font-semibold uppercase tracking-wider text-fg-muted">
+        {props.title}
+      </h2>
+      {props.children}
+    </section>
+  );
+}
+
 /**
  * Label plus an info badge. The explanation lives in the badge tooltip rather than under
  * the control, so a page of many settings stays scannable. Hovering the label or the badge
  * shows it, and focusing the badge shows it for the keyboard.
  */
-function FieldLabel(props: {
-  /** Id of the control this labels, or null when the row is read-only. */
-  control: string | null;
-  icon: JSX.Element;
-  label: string;
-  hint: string;
-}) {
+function FieldLabel(props: { control: string; label: string; hint: string }) {
   const tip = createUniqueId();
 
   return (
     <div class="group/tip relative flex w-fit items-center gap-2">
-      <Show
-        when={props.control}
-        fallback={
-          <span class="flex items-center gap-2 text-fg-muted">
-            {props.icon}
-            {props.label}
-          </span>
-        }
-      >
-        {(control) => (
-          <label for={control()} class="flex items-center gap-2 text-fg-muted">
-            {props.icon}
-            {props.label}
-          </label>
-        )}
-      </Show>
+      <label for={props.control} class="text-fg-muted">
+        {props.label}
+      </label>
       <button
         type="button"
         aria-label="More information"
@@ -268,27 +242,11 @@ function FieldLabel(props: {
 }
 
 /** A labelled control. The caller gives its input the same id. */
-function Field(props: {
-  id: string;
-  icon: JSX.Element;
-  label: string;
-  hint: string;
-  children: JSX.Element;
-}) {
+function Field(props: { id: string; label: string; hint: string; children: JSX.Element }) {
   return (
     <div class="flex flex-col gap-1 text-sm">
-      <FieldLabel control={props.id} icon={props.icon} label={props.label} hint={props.hint} />
+      <FieldLabel control={props.id} label={props.label} hint={props.hint} />
       {props.children}
-    </div>
-  );
-}
-
-/** Read-only state, so no label and no control. */
-function InfoRow(props: { icon: JSX.Element; label: string; value: string; hint: string }) {
-  return (
-    <div class="flex flex-col gap-1 text-sm">
-      <FieldLabel control={null} icon={props.icon} label={props.label} hint={props.hint} />
-      <p class="rounded-xl bg-surface px-3 py-2">{props.value}</p>
     </div>
   );
 }
@@ -308,8 +266,7 @@ function ModelField(props: {
       <div class="flex items-center gap-2">
         <FieldLabel
           control={MODEL_INPUT_ID}
-          icon={<Bot size={14} aria-hidden="true" />}
-          label="Narrator model"
+          label="Model"
           hint="Writes the player-facing narrative. Any OpenRouter model id works, not only the suggestions."
         />
         <Show when={props.offline}>

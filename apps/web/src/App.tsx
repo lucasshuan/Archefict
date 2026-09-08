@@ -18,11 +18,12 @@ import { createSettingsStore, type SettingsStore } from "./settings/store.ts";
 
 export function App() {
   const [library] = createResource(async () => openLibrary(createBrowserRepo()));
-  const [persisted] = createResource(requestPersistentStorage);
+  // Ask once; the answer is not surfaced anywhere yet (no storage setting by decision).
+  void requestPersistentStorage();
 
   return (
     <Show when={library()} fallback={<Boot error={library.error} />}>
-      {(lib) => <Shell library={lib()} persisted={persisted() ?? false} />}
+      {(lib) => <Shell library={lib()} />}
     </Show>
   );
 }
@@ -41,7 +42,7 @@ function Boot(props: { error: unknown }) {
   );
 }
 
-function Shell(props: { library: Library; persisted: boolean }) {
+function Shell(props: { library: Library }) {
   const settingsStore = createSettingsStore();
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [sidebarOpen, setSidebarOpen] = createSignal(false);
@@ -82,7 +83,6 @@ function Shell(props: { library: Library; persisted: boolean }) {
       <Show when={settingsOpen()}>
         <SettingsPage
           settings={settingsStore.settings()}
-          persisted={props.persisted}
           onSave={(next) => settingsStore.save(next)}
         />
       </Show>
