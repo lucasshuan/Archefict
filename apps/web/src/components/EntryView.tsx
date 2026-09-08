@@ -53,8 +53,12 @@ export function EntryView(props: {
         classList={{
           "ml-auto max-w-[85%]": user() && !editing(),
           "w-full": user() && editing(),
-          "rounded-2xl bg-surface-raised px-4 py-3 transition-[border-radius] duration-200 ease-out group-hover:rounded-br-none group-focus-within:rounded-br-none motion-reduce:transition-none":
-            user(),
+          "rounded-2xl bg-surface-raised px-4 py-3": user(),
+          // Only square the corner when the toolbar is actually there to meet it. While
+          // editing it is hidden, and the editor holds focus, so the corner would open
+          // onto nothing.
+          "transition-[border-radius] duration-200 ease-out group-hover:rounded-br-none group-focus-within:rounded-br-none motion-reduce:transition-none":
+            user() && !editing(),
           "flex-1 rounded-xl px-3 py-1.5 transition-[background-color,border-radius] duration-200 ease-out group-hover:rounded-br-none group-hover:bg-surface group-focus-within:rounded-br-none group-focus-within:bg-surface motion-reduce:transition-none":
             !user() && !editing(),
           "flex-1 rounded-2xl bg-surface px-4 py-3": !user() && editing(),
