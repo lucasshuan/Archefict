@@ -54,7 +54,7 @@ src/<feature>/     later: sheets/, timeline/, plugins/
 - Regions are separated by surface tone (`bg`, `surface`, `surface-raised`), not by lines. Borders are the exception, not the default. A section heading inside one scrolling column is the exception that earns a hairline rule. Inputs are filled and show a focus ring. Corners are round: `rounded-app` for controls, `rounded-xl`/`2xl` for cards and bubbles.
 - Text on a colored background uses that color's `-fg` token (`text-accent-fg`, `text-danger-fg`). No unlayered CSS in `app.css`: it outranks every utility.
 - Page content sits in one column, `max-w-page`, whose width is the `--page-width` token. No page picks its own width.
-- Three foreground tones: `fg` for content, `fg-muted` for labels and chrome, `fg-subtle` for supporting text. Explanations belong in an info badge tooltip beside the label, not printed under the control; only text describing the chosen value stays on the page.
+- Four foreground tones: `fg` for content, `fg-muted` for labels and chrome, `fg-subtle` for supporting text, `fg-faint` for section headings and captions. `fg-faint` is defined as the border colour so headings match the rule beside them, which puts it far below the contrast floor; nothing a reader must be able to read goes in it. Explanations belong in an info badge tooltip beside the label, not printed under the control; only text describing the chosen value stays on the page.
 - Every API call may fail. The app works with the server down. Same-origin `/api`, proxied by Vite in dev.
 - The provider key stays on the device. It is never sent to our API.
 - Vite: Automerge is excluded from pre-bundling; dependencies reached only through linked packages are listed in `optimizeDeps.include`.

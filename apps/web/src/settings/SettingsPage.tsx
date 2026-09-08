@@ -212,9 +212,9 @@ function Section(props: {
       <div class="flex items-center gap-3">
         <h2
           id={heading}
-          class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-fg-muted"
+          class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-fg-faint"
         >
-          <props.icon size={14} class="text-fg-subtle" />
+          <props.icon size={14} />
           {props.title}
         </h2>
         <span class="h-px flex-1 bg-border" aria-hidden="true" />
@@ -310,13 +310,13 @@ function ModelField(props: {
       <Show
         when={selected()}
         fallback={
-          <span class="text-xs text-fg-subtle">
+          <span class="text-xs text-fg-faint">
             Not in the catalogue. It will still be sent as typed.
           </span>
         }
       >
         {(model) => (
-          <span class="text-xs text-fg-subtle">
+          <span class="text-xs text-fg-faint">
             {model().name}: ${model().pricing.input}/M in, ${model().pricing.output}/M out
             <Show when={model().contextLength > 0}>
               , {Math.round(model().contextLength / 1000)}k context
