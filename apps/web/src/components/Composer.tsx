@@ -49,7 +49,7 @@ export function Composer(props: {
         send();
       }}
     >
-      <div class="mx-auto flex max-w-3xl flex-col gap-1.5">
+      <div class="mx-auto flex max-w-page flex-col gap-1.5">
         <Show when={props.error}>
           {(message) => (
             <p class="flex items-start gap-2 px-1 text-sm text-danger" role="alert">

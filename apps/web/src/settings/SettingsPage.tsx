@@ -96,7 +96,7 @@ export function SettingsPage(props: {
       </header>
 
       <div class="px-4">
-        <div class="mx-auto flex max-w-2xl gap-1" role="tablist" aria-label="Settings sections">
+        <div class="mx-auto flex max-w-page gap-1" role="tablist" aria-label="Settings sections">
           <For each={TABS}>
             {(entry) => {
               const selected = () => tab() === entry.id;
@@ -124,7 +124,7 @@ export function SettingsPage(props: {
 
       <div class="min-h-0 flex-1 overflow-y-auto px-4 py-5">
         <div
-          class="mx-auto flex max-w-2xl flex-col gap-5"
+          class="mx-auto flex max-w-page flex-col gap-5"
           role="tabpanel"
           id={`settings-panel-${tab()}`}
           aria-labelledby={`settings-tab-${tab()}`}
@@ -196,7 +196,7 @@ export function SettingsPage(props: {
       </div>
 
       <footer class="px-4 py-3">
-        <div class="mx-auto flex max-w-2xl items-center justify-end gap-3">
+        <div class="mx-auto flex max-w-page items-center justify-end gap-3">
           <Show when={dirty()}>
             <span class="mr-auto text-xs text-fg-muted">Unsaved changes</span>
           </Show>

@@ -26,6 +26,8 @@
   --scrollbar-thumb-hover: oklch(0.46 0.018 265);
 
   --radius: 0.75rem;
+  /* Content column for every page: the feed, the composer, settings. One knob. */
+  --page-width: 56rem;
   --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-narrative: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 }
@@ -49,6 +51,7 @@
   --color-accent-muted: var(--accent-muted);
 
   --radius-app: var(--radius);
+  --container-page: var(--page-width);
   --font-body: var(--font-body);
   --font-narrative: var(--font-narrative);
 }

@@ -53,6 +53,7 @@ src/<feature>/     later: sheets/, timeline/, plugins/
 - Icons are lucide-solid, imported one at a time (`lucide-solid/icons/<name>`), never from the package root. Decorative icons carry `aria-hidden`; icon-only buttons carry `aria-label`.
 - Regions are separated by surface tone (`bg`, `surface`, `surface-raised`), not by lines. Borders are the exception, not the default. Inputs are filled and show a focus ring. Corners are round: `rounded-app` for controls, `rounded-xl`/`2xl` for cards and bubbles.
 - Text on a colored background uses that color's `-fg` token (`text-accent-fg`, `text-danger-fg`). No unlayered CSS in `app.css`: it outranks every utility.
+- Page content sits in one column, `max-w-page`, whose width is the `--page-width` token. No page picks its own width.
 - Three foreground tones: `fg` for content, `fg-muted` for labels and chrome, `fg-subtle` for supporting text. Explanations belong in an info badge tooltip beside the label, not printed under the control; only text describing the chosen value stays on the page.
 - Every API call may fail. The app works with the server down. Same-origin `/api`, proxied by Vite in dev.
 - The provider key stays on the device. It is never sent to our API.

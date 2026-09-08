@@ -35,7 +35,7 @@ export function NarrativeFeed(props: {
       aria-label="Narrative"
       aria-live="polite"
     >
-      <div class="mx-auto flex max-w-3xl flex-col">
+      <div class="mx-auto flex max-w-page flex-col">
         <Show when={props.entries.length === 0 && props.streamingText === null}>
           <p class="py-16 text-center font-narrative text-fg-muted">
             The story has not started. Write what you do.
