@@ -48,7 +48,7 @@ src/<feature>/     later: sheets/, timeline/, plugins/
 - The session is keyed by campaign. Switching remounts it. Per-campaign state lives inside `Session`.
 - A screen with its own sections is a page in the shell column, reached from the sidebar, with no back button of its own. The campaign column stays mounted and hidden so a streaming reply survives the detour. Modals are for one short decision. A page commits what is valid as it unmounts.
 - All timeline writes go through `campaign/timeline.ts`. It owns persistence, save state and the 50-step undo history, which is per device in localStorage. Destructive actions are undoable, so they do not ask for confirmation.
-- Styling: Tailwind utilities on semantic tokens only (`bg-surface`, `text-fg-muted`). The palette is removed; `bg-zinc-900` does not compile. Cursors and other interaction defaults come from the base layer, never per element.
+- Styling: Tailwind utilities on semantic tokens only (`bg-surface`, `text-fg-muted`). The palette is removed; `bg-zinc-900` does not compile. Cursors, scrollbars and other interaction defaults come from the base layer, never per element.
 - Dark is the theme. The tokens are the future plugin theming API.
 - Icons are lucide-solid, imported one at a time (`lucide-solid/icons/<name>`), never from the package root. Decorative icons carry `aria-hidden`; icon-only buttons carry `aria-label`.
 - Regions are separated by surface tone (`bg`, `surface`, `surface-raised`), not by lines. Borders are the exception, not the default. Inputs are filled and show a focus ring. Corners are round: `rounded-app` for controls, `rounded-xl`/`2xl` for cards and bubbles.

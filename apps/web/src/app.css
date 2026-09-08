@@ -22,6 +22,8 @@
   --danger: oklch(0.62 0.19 25);
   --danger-fg: oklch(0.98 0.01 25);
   --accent-muted: oklch(0.78 0.13 70 / 0.14);
+  --scrollbar-thumb: oklch(0.34 0.018 265);
+  --scrollbar-thumb-hover: oklch(0.46 0.018 265);
 
   --radius: 0.75rem;
   --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -90,6 +92,36 @@ body {
   }
   ::selection {
     background: var(--accent-muted);
+  }
+}
+
+/*
+ * Scrollbars: one thin, quiet bar everywhere, from the base layer. Never styled per element.
+ * The standard properties cover Firefox and Chromium; Chromium ignores the ::-webkit rules
+ * once scrollbar-width is set, so those exist for Safari and older WebKit (Tauri, later).
+ * The transparent border on the WebKit thumb keeps it visually thin inside a wider hit area.
+ */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: var(--scrollbar-thumb);
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
   }
 }
 
