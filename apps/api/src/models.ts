@@ -9,6 +9,7 @@ type OpenRouterModel = {
   context_length?: unknown;
   architecture?: { output_modalities?: unknown } | null;
   pricing?: { prompt?: unknown; completion?: unknown } | null;
+  supported_parameters?: unknown;
 };
 
 export type CatalogueSource = {
@@ -71,11 +72,22 @@ export function parseModels(data: unknown): ModelInfo[] {
         input: perMillion(raw.pricing?.prompt),
         output: perMillion(raw.pricing?.completion),
       },
+      tools: supportsTools(raw.supported_parameters),
     };
     const parsed = ModelInfo.safeParse(candidate);
     if (parsed.success) models.push(parsed.data);
   }
   return models.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
+ * OpenRouter lists what each model accepts. One that does not list `tools` would take the
+ * narrator's instructions and fail every tool call silently, so the picker has to know. Every
+ * model has carried the list so far; should it go missing, assume the common case rather
+ * than lock a model out on no evidence.
+ */
+function supportsTools(value: unknown): boolean {
+  return Array.isArray(value) ? value.includes("tools") : true;
 }
 
 /** OpenRouter prices are USD per token as strings. Convert to USD per million, 3 decimals. */

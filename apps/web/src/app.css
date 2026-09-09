@@ -17,11 +17,13 @@
   --fg: oklch(0.93 0.008 85);
   --fg-muted: oklch(0.68 0.012 85);
   --fg-subtle: oklch(0.6 0.012 85);
-  --accent: oklch(0.78 0.13 70);
+  /* Gold, not caution tape. Chroma this high at this lightness reads as a warning before
+     it reads as a brand, which is why the accent had to be rationed. */
+  --accent: oklch(0.8 0.085 70);
   --accent-fg: oklch(0.18 0.03 70);
   --danger: oklch(0.62 0.19 25);
   --danger-fg: oklch(0.98 0.01 25);
-  --accent-muted: oklch(0.78 0.13 70 / 0.14);
+  --accent-muted: oklch(0.8 0.085 70 / 0.14);
   --scrollbar-thumb: oklch(0.34 0.018 265);
   --scrollbar-thumb-hover: oklch(0.46 0.018 265);
 

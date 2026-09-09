@@ -18,6 +18,7 @@
     "@automerge/automerge-repo": "catalog:",
     "@automerge/automerge-repo-network-broadcastchannel": "catalog:",
     "@automerge/automerge-repo-storage-indexeddb": "catalog:",
+    "@lobehub/icons-static-svg": "catalog:",
     "@orpc/client": "catalog:",
     "dompurify": "catalog:",
     "lucide-solid": "catalog:",

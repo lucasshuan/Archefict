@@ -9,6 +9,7 @@ const catalogue: ModelCatalogue = {
       name: "Claude Haiku 4.5",
       contextLength: 200000,
       pricing: { input: 1, output: 5 },
+      tools: true,
     },
   ],
   fetchedAt: 1_000,

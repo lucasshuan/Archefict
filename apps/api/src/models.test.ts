@@ -8,6 +8,15 @@ const sample = [
     context_length: 200000,
     architecture: { output_modalities: ["text"] },
     pricing: { prompt: "0.000001", completion: "0.000005" },
+    supported_parameters: ["max_tokens", "tools", "tool_choice"],
+  },
+  {
+    id: "tencent/hy-mt2-7b",
+    name: "Tencent: Hunyuan MT 7B",
+    context_length: 32768,
+    architecture: { output_modalities: ["text"] },
+    pricing: { prompt: "0.0000001", completion: "0.0000002" },
+    supported_parameters: ["max_tokens", "temperature"],
   },
   {
     id: "google/gemini-3.1-flash-image",
@@ -21,7 +30,7 @@ const sample = [
 ];
 
 describe("parseModels", () => {
-  it("keeps text models with prices, converted to USD per million", () => {
+  it("keeps text models with prices, converted to USD per million, and notes tool support", () => {
     const models = parseModels(sample);
     expect(models).toEqual([
       {
@@ -29,8 +38,23 @@ describe("parseModels", () => {
         name: "Anthropic: Claude Haiku 4.5",
         contextLength: 200000,
         pricing: { input: 1, output: 5 },
+        tools: true,
+      },
+      {
+        id: "tencent/hy-mt2-7b",
+        name: "Tencent: Hunyuan MT 7B",
+        contextLength: 32768,
+        pricing: { input: 0.1, output: 0.2 },
+        tools: false,
       },
     ]);
+  });
+
+  it("assumes tool support when the provider lists no parameters at all", () => {
+    const [model] = parseModels([
+      { id: "x/y", name: "Y", context_length: 8, pricing: { prompt: "0", completion: "0" } },
+    ]);
+    expect(model?.tools).toBe(true);
   });
 
   it("returns nothing for a malformed payload", () => {

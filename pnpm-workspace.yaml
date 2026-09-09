@@ -32,6 +32,9 @@ catalog:
   vite: 8.2.2
   vite-plugin-solid: 2.11.14
   lucide-solid: 1.39.0
+  # Static SVG only: no code, no dependencies, no lifecycle scripts. Deep-imported per file,
+  # so the bundle carries the three dozen marks we map and none of the other 870.
+  "@lobehub/icons-static-svg": 1.95.0
   solid-js: 1.9.15
   marked: 18.0.11
   dompurify: 3.4.14

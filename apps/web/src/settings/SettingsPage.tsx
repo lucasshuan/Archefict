@@ -1,9 +1,9 @@
 import type { ModelInfo } from "@archefict/contract";
 import { AiSettings } from "@archefict/schema";
 import Bot from "lucide-solid/icons/bot";
-import Feather from "lucide-solid/icons/feather";
+import Eye from "lucide-solid/icons/eye";
+import EyeOff from "lucide-solid/icons/eye-off";
 import Info from "lucide-solid/icons/info";
-import Plug from "lucide-solid/icons/plug";
 import {
   createResource,
   createSignal,
@@ -17,6 +17,9 @@ import {
   Switch,
 } from "solid-js";
 import { FALLBACK_MODELS, loadModels } from "../api/models.ts";
+import { CONTROL } from "../components/control.ts";
+import { ModelCombobox } from "../components/ModelCombobox.tsx";
+import { summarise } from "../components/model-format.ts";
 
 /** Icons live on tabs. Fields are plain labels; sections are plain headings. */
 const TABS = [{ id: "ai", label: "AI", icon: Bot }] as const;
@@ -36,6 +39,7 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
   const [apiKey, setApiKey] = createSignal(props.settings.apiKey);
   const [narratorModel, setNarratorModel] = createSignal(props.settings.narratorModel);
   const [systemPrompt, setSystemPrompt] = createSignal(props.settings.systemPrompt);
+  const [showKey, setShowKey] = createSignal(false);
   const [problem, setProblem] = createSignal<string | null>(null);
   const [catalogue] = createResource(loadModels);
 
@@ -87,8 +91,12 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
         <h1 class="text-base font-semibold tracking-wide">Settings</h1>
       </header>
 
-      <div class="px-4">
-        <div class="mx-auto flex max-w-page gap-1" role="tablist" aria-label="Settings sections">
+      <div class="border-b border-border px-4">
+        <div
+          class="mx-auto flex max-w-page gap-1 pb-2"
+          role="tablist"
+          aria-label="Settings sections"
+        >
           <For each={TABS}>
             {(entry) => {
               const selected = () => tab() === entry.id;
@@ -117,32 +125,46 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
 
       <div class="min-h-0 flex-1 overflow-y-auto px-4 py-5">
         <div
-          class="mx-auto flex max-w-page flex-col gap-8"
+          class="mx-auto flex max-w-page flex-col gap-4"
           role="tabpanel"
           id={`settings-panel-${tab()}`}
           aria-labelledby={`settings-tab-${tab()}`}
         >
           <Switch>
             <Match when={tab() === "ai"}>
-              <Section title="Provider" icon={Plug}>
+              <Section title="Provider">
                 <Field
                   id="settings-api-key"
                   label="OpenRouter API key"
                   hint="Stored only in this browser. Calls go straight from here to OpenRouter."
                 >
-                  <input
-                    id="settings-api-key"
-                    type="password"
-                    autocomplete="off"
-                    value={apiKey()}
-                    onInput={(event) => setApiKey(event.currentTarget.value)}
-                    placeholder="sk-or-…"
-                    class="rounded-xl bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50"
-                  />
+                  <div class="relative">
+                    <input
+                      id="settings-api-key"
+                      type={showKey() ? "text" : "password"}
+                      autocomplete="off"
+                      spellcheck={false}
+                      value={apiKey()}
+                      onInput={(event) => setApiKey(event.currentTarget.value)}
+                      placeholder="sk-or-…"
+                      class={`${CONTROL} w-full pr-10 font-mono`}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showKey() ? "Hide the key" : "Show the key"}
+                      aria-pressed={showKey()}
+                      class="absolute inset-y-0 right-0 flex items-center px-3 text-fg-subtle transition-colors hover:text-fg-muted"
+                      onClick={() => setShowKey(!showKey())}
+                    >
+                      <Show when={showKey()} fallback={<Eye size={15} aria-hidden="true" />}>
+                        <EyeOff size={15} aria-hidden="true" />
+                      </Show>
+                    </button>
+                  </div>
                 </Field>
               </Section>
 
-              <Section title="Narrator" icon={Feather}>
+              <Section title="Narrator">
                 <ModelField
                   value={narratorModel()}
                   models={models()}
@@ -160,7 +182,7 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
                     rows={8}
                     value={systemPrompt()}
                     onInput={(event) => setSystemPrompt(event.currentTarget.value)}
-                    class="resize-y rounded-xl bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-accent/50"
+                    class={`${CONTROL} resize-y`}
                   />
                 </Field>
               </Section>
@@ -177,7 +199,7 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
         </div>
       </div>
 
-      <footer class="px-4 py-3">
+      <footer class="border-t border-border px-4 py-3">
         <div class="mx-auto flex max-w-page items-center justify-end gap-3">
           <Show when={dirty()}>
             <span class="mr-auto text-xs text-fg-muted">Unsaved changes</span>
@@ -197,29 +219,22 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
 }
 
 /**
- * A titled group of fields, headed by an icon, a label and a rule running to the edge.
- * The rule is the one deliberate line in the app: inside a single scrolling column,
- * surface tone alone does not read as a break. Heading and icon take the accent, the
- * rule stays in the border tone, so the label is the bright thing and the line recedes.
+ * A titled group of fields, as a panel raised off the page.
+ *
+ * Tone alone lifts it off the page — no border, no rule, no icon. An icon, small caps,
+ * letter-spacing and a hairline were four marks for one level, and none of them was size or
+ * weight, the two the eye reads first. So the heading simply outranks its labels, a step
+ * larger and at full brightness against their muted tone, and the controls inside drop back
+ * to the page ground: wells cut into the panel, and the contrast that keeps its shape
+ * readable without an edge drawn around it.
  */
-function Section(props: {
-  title: string;
-  icon: (props: { size?: number; class?: string }) => JSX.Element;
-  children: JSX.Element;
-}) {
+function Section(props: { title: string; children: JSX.Element }) {
   const heading = createUniqueId();
   return (
-    <section class="flex flex-col gap-4" aria-labelledby={heading}>
-      <div class="flex items-center gap-3">
-        <h2
-          id={heading}
-          class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent"
-        >
-          <props.icon size={14} />
-          {props.title}
-        </h2>
-        <span class="h-px flex-1 bg-border" aria-hidden="true" />
-      </div>
+    <section class="flex flex-col gap-5 rounded-app bg-surface p-5" aria-labelledby={heading}>
+      <h2 id={heading} class="text-[15px] font-semibold text-fg">
+        {props.title}
+      </h2>
       {props.children}
     </section>
   );
@@ -296,19 +311,16 @@ function ModelField(props: {
           </span>
         </Show>
       </div>
-      <input
+      <ModelCombobox
         id={MODEL_INPUT_ID}
-        list="archefict-models"
         value={props.value}
-        onInput={(event) => props.onInput(event.currentTarget.value)}
-        spellcheck={false}
-        class="rounded-xl bg-surface px-3 py-2 font-mono text-sm outline-none focus:ring-2 focus:ring-accent/50"
+        models={props.models}
+        onInput={props.onInput}
       />
-      <datalist id="archefict-models">
-        <For each={props.models}>{(model) => <option value={model.id}>{model.name}</option>}</For>
-      </datalist>
-      {/* The one description that stays on the page: it describes the chosen option. Accent,
-          like a section heading: it is metadata about the value, not the value. */}
+      {/* What the row in the open list said, for the field once it is closed — same three
+          facts, same words. Subtle, because it is a readout. Two things earn the accent: an
+          id the catalogue does not know, and a model that cannot use tools — the one fact
+          about the value that should change the choice. */}
       <Show
         when={selected()}
         fallback={
@@ -318,12 +330,11 @@ function ModelField(props: {
         }
       >
         {(model) => (
-          <span class="text-xs text-accent">
-            {model().name}: ${model().pricing.input}/M in, ${model().pricing.output}/M out
-            <Show when={model().contextLength > 0}>
-              , {Math.round(model().contextLength / 1000)}k context
-            </Show>
-            .
+          <span
+            class="text-xs"
+            classList={{ "text-fg-subtle": model().tools, "text-accent": !model().tools }}
+          >
+            {summarise(model())}
           </span>
         )}
       </Show>

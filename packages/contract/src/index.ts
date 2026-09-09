@@ -18,6 +18,8 @@ export const ModelInfo = z.object({
     input: z.number().nonnegative(),
     output: z.number().nonnegative(),
   }),
+  /** Accepts tool definitions. Without them the narrator cannot read the library (Slice 8). */
+  tools: z.boolean(),
 });
 export type ModelInfo = z.infer<typeof ModelInfo>;
 

@@ -8,6 +8,8 @@ export const FALLBACK_MODELS: readonly ModelInfo[] = SUGGESTED_MODELS.map((m) =>
   name: m.label,
   contextLength: 0,
   pricing: { input: m.inputPerM, output: m.outputPerM },
+  // Every suggested model takes tools; the list is chosen that way.
+  tools: true,
 }));
 
 export type ModelList = {
