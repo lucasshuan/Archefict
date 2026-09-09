@@ -1,20 +1,19 @@
 import type { CampaignHandles } from "@archefict/crdt";
-import Check from "lucide-solid/icons/check";
-import LoaderCircle from "lucide-solid/icons/loader-circle";
-import TriangleAlert from "lucide-solid/icons/triangle-alert";
-import { createResource, createSignal, Match, onCleanup, onMount, Show, Switch } from "solid-js";
-import { createTurnRunner } from "./ai/turn.ts";
+import BookOpenText from "lucide-solid/icons/book-open-text";
+import Settings from "lucide-solid/icons/settings";
+import { createResource, createSignal, Show } from "solid-js";
+import { createConversationStore } from "./campaign/conversations.ts";
 import { createDocSignal } from "./campaign/doc-signal.ts";
 import { createBrowserRepo } from "./campaign/repo.ts";
 import { type Library, openLibrary, requestPersistentStorage } from "./campaign/store.ts";
-import { createTimelineController, type SaveState } from "./campaign/timeline.ts";
-import { Composer } from "./components/Composer.tsx";
 import { EditableTitle } from "./components/EditableTitle.tsx";
-import { NarrativeFeed } from "./components/NarrativeFeed.tsx";
 import { GUEST, Sidebar } from "./components/Sidebar.tsx";
 import { SidebarToggle } from "./components/SidebarToggle.tsx";
+import { type Tab, TabBar } from "./components/TabBar.tsx";
 import { SettingsPage } from "./settings/SettingsPage.tsx";
 import { createSettingsStore, type SettingsStore } from "./settings/store.ts";
+import { CampaignSettingsTab } from "./workspace/CampaignSettingsTab.tsx";
+import { StoryTab } from "./workspace/StoryTab.tsx";
 
 export function App() {
   const [library] = createResource(async () => openLibrary(createBrowserRepo()));
@@ -90,6 +89,22 @@ function Shell(props: { library: Library }) {
   );
 }
 
+type TabId = "story" | "settings";
+
+/**
+ * The default tabs. Library joins when there is a library to show. Users compose their own
+ * in Slice 5; Settings is the one that cannot be removed (docs/workspace.md).
+ */
+const TABS: readonly Tab<TabId>[] = [
+  { id: "story", label: "Story", icon: BookOpenText },
+  { id: "settings", label: "Campaign settings", icon: Settings },
+];
+
+/**
+ * One campaign: its title, its tabs, and the panels inside the open tab. Every tab stays
+ * mounted and only the open one is displayed, so a reply streaming in the story survives a
+ * look at the settings, the way the whole column survives a visit to the settings page.
+ */
 function Session(props: {
   handles: CampaignHandles;
   settings: SettingsStore;
@@ -100,39 +115,9 @@ function Session(props: {
   onRename: (name: string) => void;
 }) {
   const index = createDocSignal(props.handles.index);
-  const doc = createDocSignal(props.handles.timeline);
-  const timeline = createTimelineController(props.handles);
-  const turn = createTurnRunner({
-    timeline,
-    entries: () => doc().entries,
-    settings: props.settings.settings,
-  });
-
-  onMount(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (props.blocked || !(event.ctrlKey || event.metaKey) || event.altKey || turn.busy()) {
-        return;
-      }
-      // Inputs keep their own native undo; only the timeline responds outside them.
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
-      ) {
-        return;
-      }
-      const key = event.key.toLowerCase();
-      if (key === "z" && !event.shiftKey) {
-        event.preventDefault();
-        void timeline.undo();
-      } else if ((key === "z" && event.shiftKey) || key === "y") {
-        event.preventDefault();
-        void timeline.redo();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    onCleanup(() => document.removeEventListener("keydown", onKeyDown));
-  });
+  const conversations = createConversationStore(props.handles, index);
+  const [tab, setTab] = createSignal<TabId>("story");
+  const instructions = () => index().instructions ?? props.settings.settings().systemPrompt;
 
   return (
     // The hidden attribute would lose to the flex utility, so swap the display class.
@@ -141,67 +126,39 @@ function Session(props: {
       classList={{ flex: !props.hidden, hidden: props.hidden }}
       inert={props.blocked}
     >
-      <header class="flex items-center gap-2 py-3 pl-14 pr-4">
+      <header class="flex items-center gap-2 py-3 pr-4 pl-14">
         <EditableTitle value={index().name} onCommit={props.onRename} />
-        <SaveIndicator state={timeline.saveState()} />
+        <TabBar class="ml-auto" tabs={TABS} active={tab()} onSelect={setTab} />
       </header>
 
-      <NarrativeFeed
-        entries={doc().entries}
-        streamingText={turn.streamingText()}
-        onEdit={(id, text) => void timeline.update(id, text)}
-        onDelete={(id) => void timeline.remove(id)}
-      />
-
-      <Composer
-        draftKey={props.handles.timeline.url}
-        busy={turn.busy()}
-        canContinue={props.settings.settings().apiKey !== "" && doc().entries.length > 0}
-        error={turn.error() ?? timeline.error()}
-        canUndo={timeline.canUndo()}
-        canRedo={timeline.canRedo()}
-        onSubmit={(text) => void turn.submit(text)}
-        onStop={turn.stop}
-        onUndo={() => void timeline.undo()}
-        onRedo={() => void timeline.redo()}
-      />
+      <div
+        id="tabpanel-story"
+        role="tabpanel"
+        aria-labelledby="tab-story"
+        class="min-h-0 flex-1 flex-col"
+        classList={{ flex: tab() === "story", hidden: tab() !== "story" }}
+      >
+        <StoryTab
+          handles={props.handles}
+          conversations={conversations}
+          settings={props.settings.settings}
+          instructions={instructions}
+          blocked={props.blocked || tab() !== "story"}
+        />
+      </div>
+      <div
+        id="tabpanel-settings"
+        role="tabpanel"
+        aria-labelledby="tab-settings"
+        class="min-h-0 flex-1 flex-col"
+        classList={{ flex: tab() === "settings", hidden: tab() !== "settings" }}
+      >
+        <CampaignSettingsTab
+          handles={props.handles}
+          index={index}
+          fallback={() => props.settings.settings().systemPrompt}
+        />
+      </div>
     </main>
   );
-}
-
-function SaveIndicator(props: { state: SaveState }) {
-  return (
-    <span
-      class="flex items-center text-fg-muted"
-      role="status"
-      data-save-state={props.state}
-      title={saveTitle(props.state)}
-    >
-      <Switch>
-        <Match when={props.state === "saving"}>
-          <LoaderCircle size={14} class="animate-spin" aria-hidden="true" />
-        </Match>
-        <Match when={props.state === "saved"}>
-          <Check size={14} aria-hidden="true" />
-        </Match>
-        <Match when={props.state === "failed"}>
-          <TriangleAlert size={14} class="text-danger" aria-hidden="true" />
-        </Match>
-      </Switch>
-      <span class="sr-only">{saveTitle(props.state)}</span>
-    </span>
-  );
-}
-
-function saveTitle(state: SaveState): string {
-  switch (state) {
-    case "idle":
-      return "";
-    case "saving":
-      return "Saving…";
-    case "saved":
-      return "Saved";
-    case "failed":
-      return "Not saved";
-  }
 }

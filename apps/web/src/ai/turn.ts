@@ -26,6 +26,8 @@ export function createTurnRunner(options: {
   timeline: TimelineController;
   entries: () => readonly NarrativeEntry[];
   settings: Accessor<AiSettings>;
+  /** The narrator's instructions: the campaign's own, or the device default. */
+  instructions: Accessor<string>;
 }): TurnRunner {
   const [streamingText, setStreamingText] = createSignal<string | null>(null);
   const [error, setError] = createSignal<string | null>(null);
@@ -64,7 +66,7 @@ export function createTurnRunner(options: {
       const narration = streamNarration({
         apiKey: settings.apiKey,
         model: settings.narratorModel,
-        systemPrompt: settings.systemPrompt,
+        systemPrompt: options.instructions(),
         entries: options.entries(),
         mode: trimmed === "" ? "continue" : "reply",
         signal: controller.signal,

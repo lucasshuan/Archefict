@@ -174,8 +174,8 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
 
                 <Field
                   id="settings-system-prompt"
-                  label="Instructions"
-                  hint="Sent as the system prompt on every turn."
+                  label="Default instructions"
+                  hint="The narrator's system prompt for every campaign that has not written its own. A campaign's own instructions live in its Settings tab."
                 >
                   <textarea
                     id="settings-system-prompt"

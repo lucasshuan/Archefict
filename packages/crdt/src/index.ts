@@ -5,16 +5,28 @@
  * Automerge is canonical; everything else is a projection (docs/stack.md).
  *
  * Document granularity (never one document per campaign):
- *   campaign-index  -> name, pointers to the other documents
- *   timeline:<id>   -> the narrative feed
+ *   campaign-index     -> name, instructions, the list of conversations
+ *   conversation:<id>  -> one conversation's timeline of narrative entries
  *
- * Undo: Automerge has no application undo, so every mutation returns the TimelineAction
- * that produced it. The caller keeps the stack; `undoAction` and `redoAction` apply the
- * inverse here, as ordinary changes, so undoing stays mergeable and syncs like any edit.
+ * A conversation is a record in the index; its entries are a document of their own, so a
+ * long one never weighs on the others and undo history stays per conversation. The entries
+ * document and its operations keep their Timeline names: it is the timeline of that
+ * conversation.
+ *
+ * Undo: Automerge has no application undo, so every timeline mutation returns the
+ * TimelineAction that produced it. The caller keeps the stack; `undoAction` and `redoAction`
+ * apply the inverse here, as ordinary changes, so undoing stays mergeable and syncs like any
+ * edit. Index changes — conversations, instructions — are not undoable; archive is reversible
+ * instead.
  *
  * This package knows nothing about the browser or Solid. Adapters are injected by the app.
  */
-import { NarrativeEntry, type Provenance, type TimelineAction } from "@archefict/schema";
+import {
+  type Conversation,
+  NarrativeEntry,
+  type Provenance,
+  type TimelineAction,
+} from "@archefict/schema";
 import { updateText } from "@automerge/automerge";
 import type { AutomergeUrl, DocHandle, Repo } from "@automerge/automerge-repo";
 import { isValidAutomergeUrl } from "@automerge/automerge-repo";
@@ -25,29 +37,46 @@ export type TimelineDoc = {
 
 export type CampaignIndexDoc = {
   name: string;
-  timelineUrl: AutomergeUrl;
   createdAt: number;
+  conversations: Conversation[];
+  /** The narrator's instructions for this campaign. Absent: the device's default applies. */
+  instructions?: string;
+  /** Slice 0 kept one feed per campaign here. `openCampaign` folds it into `conversations`. */
+  timelineUrl?: AutomergeUrl;
 };
 
-export type CampaignHandles = {
-  index: DocHandle<CampaignIndexDoc>;
+/** The first conversation of every campaign, and the name a Slice 0 feed takes when migrated. */
+export const FIRST_CONVERSATION_TITLE = "Story";
+
+export type ConversationHandles = {
+  id: string;
   timeline: DocHandle<TimelineDoc>;
   /**
-   * Resolves once every pending change to these documents has reached storage.
-   * The Repo saves on a debounce, so a change is not durable until this settles.
-   * Call it after every user-visible write; a reload inside the debounce window loses data.
+   * Resolves once every pending change to the entries has reached storage. The Repo saves
+   * on a debounce, so a change is not durable until this settles. Call it after every
+   * user-visible write; a reload inside the debounce window loses data.
    */
   flush: () => Promise<void>;
 };
 
+export type CampaignHandles = {
+  index: DocHandle<CampaignIndexDoc>;
+  /** Opens the entries of a conversation listed in the index. */
+  openConversation: (id: string) => Promise<ConversationHandles>;
+  /** Adds a conversation with an empty timeline. Durable before it returns. */
+  createConversation: (title: string) => Promise<Conversation>;
+  /** Resolves once pending changes to the index have reached storage. */
+  flush: () => Promise<void>;
+};
+
 export function createCampaign(repo: Repo, name: string): CampaignHandles {
-  const timeline = repo.create<TimelineDoc>({ entries: [] });
+  const first = newConversation(repo, FIRST_CONVERSATION_TITLE);
   const index = repo.create<CampaignIndexDoc>({
     name,
-    timelineUrl: timeline.url,
     createdAt: Date.now(),
+    conversations: [first.record],
   });
-  return withFlush(repo, index, timeline);
+  return handlesFor(repo, index);
 }
 
 export async function openCampaign(repo: Repo, indexUrl: string): Promise<CampaignHandles> {
@@ -55,20 +84,82 @@ export async function openCampaign(repo: Repo, indexUrl: string): Promise<Campai
     throw new Error(`Not an Automerge URL: ${indexUrl}`);
   }
   const index = await repo.find<CampaignIndexDoc>(indexUrl);
-  const timeline = await repo.find<TimelineDoc>(index.doc().timelineUrl);
-  return withFlush(repo, index, timeline);
+  migrateIndex(index);
+  return handlesFor(repo, index);
 }
 
-function withFlush(
+/**
+ * Removes every document of a campaign. Returns the conversations that were listed, so the
+ * caller can drop what it kept beside them on the device (drafts, undo history).
+ */
+export function deleteCampaign(
   repo: Repo,
   index: DocHandle<CampaignIndexDoc>,
-  timeline: DocHandle<TimelineDoc>,
-): CampaignHandles {
+): readonly Conversation[] {
+  const conversations = [...index.doc().conversations];
+  for (const conversation of conversations) {
+    if (isValidAutomergeUrl(conversation.docUrl)) repo.delete(conversation.docUrl);
+  }
+  repo.delete(index.documentId);
+  return conversations;
+}
+
+function handlesFor(repo: Repo, index: DocHandle<CampaignIndexDoc>): CampaignHandles {
   return {
     index,
-    timeline,
-    flush: () => repo.flush([index.documentId, timeline.documentId]),
+    async openConversation(id) {
+      const record = index.doc().conversations.find((c) => c.id === id);
+      if (record === undefined) throw new Error(`No conversation ${id} in this campaign`);
+      if (!isValidAutomergeUrl(record.docUrl)) {
+        throw new Error(`Conversation ${id} does not point at an Automerge URL`);
+      }
+      const timeline = await repo.find<TimelineDoc>(record.docUrl);
+      return { id, timeline, flush: () => repo.flush([timeline.documentId]) };
+    },
+    async createConversation(title) {
+      const { record, timeline } = newConversation(repo, title);
+      index.change((doc) => {
+        doc.conversations.push(record);
+      });
+      await repo.flush([index.documentId, timeline.documentId]);
+      return record;
+    },
+    flush: () => repo.flush([index.documentId]),
   };
+}
+
+function newConversation(
+  repo: Repo,
+  title: string,
+): { record: Conversation; timeline: DocHandle<TimelineDoc> } {
+  const timeline = repo.create<TimelineDoc>({ entries: [] });
+  return {
+    record: { id: crypto.randomUUID(), title, docUrl: timeline.url, createdAt: Date.now() },
+    timeline,
+  };
+}
+
+/**
+ * A Slice 0 campaign had one feed, pointed at by `timelineUrl`. It becomes the first
+ * conversation and keeps its document, so nothing written before this shape existed moves.
+ */
+function migrateIndex(index: DocHandle<CampaignIndexDoc>): void {
+  const current = index.doc() as Partial<CampaignIndexDoc>;
+  if (current.conversations !== undefined) return;
+  index.change((doc) => {
+    const legacy = doc.timelineUrl;
+    doc.conversations = legacy
+      ? [
+          {
+            id: crypto.randomUUID(),
+            title: FIRST_CONVERSATION_TITLE,
+            docUrl: legacy,
+            createdAt: doc.createdAt,
+          },
+        ]
+      : [];
+    delete doc.timelineUrl;
+  });
 }
 
 export function renameCampaign(index: DocHandle<CampaignIndexDoc>, name: string): void {
@@ -78,6 +169,73 @@ export function renameCampaign(index: DocHandle<CampaignIndexDoc>, name: string)
     doc.name = trimmed;
   });
 }
+
+// ---------------------------------------------------------------------------
+// Conversations. Records in the index; each points at its own entries document.
+// ---------------------------------------------------------------------------
+
+export function conversationsOf(index: DocHandle<CampaignIndexDoc>): readonly Conversation[] {
+  return index.doc().conversations;
+}
+
+export function renameConversation(
+  index: DocHandle<CampaignIndexDoc>,
+  id: string,
+  title: string,
+): void {
+  const trimmed = title.trim();
+  if (trimmed === "") return;
+  const current = index.doc().conversations.find((c) => c.id === id);
+  if (current === undefined || current.title === trimmed) return;
+  index.change((doc) => {
+    const target = doc.conversations.find((c) => c.id === id);
+    if (target) target.title = trimmed;
+  });
+}
+
+/** Puts a conversation away. Nothing is lost: `restoreConversation` brings it back as it was. */
+export function archiveConversation(index: DocHandle<CampaignIndexDoc>, id: string): void {
+  const current = index.doc().conversations.find((c) => c.id === id);
+  if (current === undefined || current.archivedAt !== undefined) return;
+  index.change((doc) => {
+    const target = doc.conversations.find((c) => c.id === id);
+    if (target) target.archivedAt = Date.now();
+  });
+}
+
+export function restoreConversation(index: DocHandle<CampaignIndexDoc>, id: string): void {
+  const current = index.doc().conversations.find((c) => c.id === id);
+  if (current === undefined || current.archivedAt === undefined) return;
+  index.change((doc) => {
+    const target = doc.conversations.find((c) => c.id === id);
+    if (target) delete target.archivedAt;
+  });
+}
+
+/**
+ * The campaign's own narrator instructions. `undefined` returns the campaign to the device
+ * default; a string, even an empty one, is exactly what the narrator gets. Written as a text
+ * diff so two devices editing the same paragraph merge instead of one losing everything.
+ */
+export function setInstructions(
+  index: DocHandle<CampaignIndexDoc>,
+  text: string | undefined,
+): void {
+  if (index.doc().instructions === text) return;
+  index.change((doc) => {
+    if (text === undefined) {
+      delete doc.instructions;
+    } else if (typeof doc.instructions === "string") {
+      updateText(doc, ["instructions"], text);
+    } else {
+      doc.instructions = text;
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Entries.
+// ---------------------------------------------------------------------------
 
 export type NewEntry = {
   kind: NarrativeEntry["kind"];

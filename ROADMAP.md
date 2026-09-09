@@ -20,7 +20,7 @@
 - [x] Can a campaign have more than one human? **Decided Sep 06, 2026: v1 is single-user, multi-device.** Shared campaigns are planned but hard, see Later. Sync authorization is doc to campaign to owner; keep a membership table anyway so sharing can be added without a migration.
 - [ ] Sheet model: free body + free fields + optional components (current lean) vs mandatory types. Confirm.
 - [ ] Plugin network access: none, manifest allowlist via CSP, or routed through a host proxy.
-- [ ] One or many AI conversations per campaign.
+- [x] One or many AI conversations per campaign. **Decided Sep 09, 2026: many.** The index lists them; each has its own entries document. Built in Slice 0.5. Tab names (*Story*, *Library*) and folders as their own entity were decided the same day: `docs/workspace.md`.
 - [ ] AI sources for v1: BYOK keys (PRODUCT.md) vs OpenRouter-first vs both. Where keys live (device only, server encrypted, or both as modes).
 - [ ] Background/handoff execution: client-only while the app is open, or server-side when the client is closed. Determines whether keys must ever reach the server.
 - [ ] Image generation stance: PRODUCT.md says no for now. Keep or revise.
@@ -83,6 +83,17 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [ ] **Play:** one real session with the AI; capture only findings that change the plan.
 - Known gaps: key in plain localStorage; context is the last 40 entries; no meta channel; no undo (edits and deletes are final until the undo manager in Slice 4); no export; Vite dev needs Automerge excluded from pre-bundling (see `vite.config.ts`); ESLint's Solid rules are covered by Biome only until typescript-eslint supports TS 7.1
 
+### Slice 0.5 - The workspace shell (built Sep 09, 2026)
+Pulled forward from Slices 3 and 5 so the library has somewhere to land. Design: `docs/workspace.md`.
+- [x] Tabs: icons at the right end of the campaign header; Story and Settings. Every tab stays mounted, the open one is displayed
+- [x] Panels: every region of a tab, behind a slim bar with actions, status and `⋯`. Peers that talk through tab state, never through each other
+- [x] Story tab: Conversations panel (create, rename inline, archive, restore, hide) beside the Narrative panel, bound to the active conversation
+- [x] (kernel) `Conversation` shape; `campaign-index` lists conversations and carries `instructions`; one `conversation:<id>` entries document each; Slice 0 indexes migrate on open
+- [x] Campaign Settings tab: narrator instructions per campaign, synced; unset means the device default, and the Settings page's field is now that default
+- [x] Undo history, drafts and the open conversation are per conversation and per device
+- [ ] Library tab (Slice 1 lands it); reorder and delete conversations; tab-level `⋯` for hidden panels and layout reset
+- [ ] **Play:** one session across two conversations. Does splitting the story into threads help or scatter it?
+
 ### Slice 1 - A sheet you can write
 - [ ] ProseMirror bound to Automerge; one sheet document persisted to IndexedDB **(bet)**
 - [ ] Free-form fields panel (key: value) on every sheet
@@ -102,6 +113,7 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [ ] **Play:** export, wipe browser storage, import. Nothing lost. Then open the export in Obsidian and see what survives.
 
 ### Slice 3 - Timeline and chat, by hand
+Naming: the tab is *Story* and each thread a *conversation* (Slice 0.5). *Timeline* here means fictional-time events, a panel of its own (`docs/workspace.md`).
 - [ ] Timeline: create, reorder, edit, delete events; link events to sheets
 - [ ] Chat: narrative channel vs meta channel (sheet/timeline updates, off-immersion notes). Manual messages, you play both sides
 - [ ] Images placed freely in chat and sheets
@@ -118,7 +130,7 @@ Pulled forward from Slices 3 and 7 so there is something to play with on day one
 - [ ] **Play:** take the untyped sheets from Slice 1 and progressively attach components. Nothing should need re-entering. Undo an hour of edits.
 
 ### Slice 5 - Your layout
-- [ ] Own panel engine: split, dock, tabs, saved layouts per campaign **(bet)**
+- [ ] Own panel engine: split, dock, tabs, saved layouts per campaign; builds on Slice 0.5's panels and tab state **(bet)**
 - [ ] Fixed top-layer surface wired now, empty, for future plugin iframes
 - [ ] Virtualized chat and timeline lists; command palette; context menus; keyboard model
 - [ ] **Play:** build the layout you actually want for a session. Drag things around while a sheet is open.
@@ -139,6 +151,7 @@ Moved ahead of cloud: this is where playing starts for real, and none of it need
 
 ### Slice 7 - Talk
 - [ ] Model policy: which app area uses which model; user-editable, read at runtime
+- [x] Catalogue carries tool support (`supported_parameters`); the picker shows models without it dimmed, tagged and unselectable, and the caption warns when one is typed by hand (built Sep 09, 2026, with Slice 0.5)
 - [ ] AI sources per Phase 0 (BYOK and/or OpenRouter), provider-independent adapter **(bet)**
 - [ ] Device-owned key mode: key never leaves the device **(bet)**
 - [ ] Spend: per-request token accounting, per-campaign and monthly budgets with hard stops, ledger view
@@ -146,13 +159,14 @@ Moved ahead of cloud: this is where playing starts for real, and none of it need
 - [ ] **Play:** one full session, chat only. The AI sees nothing but the conversation.
 
 ### Slice 8 - The AI reads
-- [ ] Tools: read sheet, query index, list timeline; typed through the schema package
+- [ ] Tools: `library.tree`, `library.search`, `library.read`; typed once in the schema package, the AI SDK takes the Zod directly (`docs/workspace.md`)
 - [ ] Strategic sheet querying: retrieval over the PGlite index, chunked by block, hybrid search; client-side embeddings **(bet)**
 - [ ] Prompt hygiene: untrusted content delimited, tool results parsed defensively
 - [ ] **Play:** one session where the AI answers from sheets it looked up itself. Notice what it should have looked up and did not.
 
 ### Slice 9 - The AI writes
 - [ ] Context model produces a typed plan; executor model emits operations through the pipeline
+- [ ] `library.propose`: one write tool for every operation type; the pipeline validates each
 - [ ] Approval tiers for write tools; "undo this AI turn"; provenance on every AI change
 - [ ] Deterministic policy in the pipeline is real now, not a stub
 - [ ] **Play:** one session where the AI updates sheets and timeline. Inspect every change. Undo at least one.

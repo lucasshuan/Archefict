@@ -1,6 +1,7 @@
 import {
   type CampaignHandles,
   createCampaign,
+  deleteCampaign,
   openCampaign,
   renameCampaign,
 } from "@archefict/crdt";
@@ -111,9 +112,9 @@ export async function openLibrary(repo: Repo): Promise<Library> {
       commit({ campaigns: remaining });
     }
 
-    writeDraft(handles.timeline.url, "");
-    repo.delete(handles.timeline.documentId);
-    repo.delete(handles.index.documentId);
+    for (const conversation of deleteCampaign(repo, handles.index)) {
+      writeDraft(conversation.docUrl, "");
+    }
 
     if (record.campaigns.length === 0) await create(DEFAULT_NAME);
   }

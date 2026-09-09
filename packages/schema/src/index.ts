@@ -54,6 +54,23 @@ export const NarrativeEntry = z.object({
 export type NarrativeEntry = z.infer<typeof NarrativeEntry>;
 
 // ---------------------------------------------------------------------------
+// Conversation. One thread of play. The campaign index lists them; each one's entries
+// live in their own document so a long conversation never weighs on the others.
+// ---------------------------------------------------------------------------
+
+export const Conversation = z.object({
+  id: z.string().min(1),
+  title: z.string(),
+  /** Automerge url of the document holding this conversation's entries. */
+  docUrl: z.string().min(1),
+  /** Wall-clock milliseconds. Ordering only. */
+  createdAt: z.number().int().nonnegative(),
+  /** Set when the conversation was put away. Archived, not deleted: restoring is one click. */
+  archivedAt: z.number().int().nonnegative().optional(),
+});
+export type Conversation = z.infer<typeof Conversation>;
+
+// ---------------------------------------------------------------------------
 // Timeline history. Local to one device, never synced: undo belongs to the person.
 // ---------------------------------------------------------------------------
 
@@ -106,6 +123,7 @@ export type ModelId = z.infer<typeof ModelId>;
 export const AiSettings = z.object({
   apiKey: z.string().default(""),
   narratorModel: ModelId,
+  /** The narrator's instructions for any campaign that has not written its own. */
   systemPrompt: z.string(),
 });
 export type AiSettings = z.infer<typeof AiSettings>;

@@ -1,6 +1,6 @@
 import {
   appendEntries,
-  type CampaignHandles,
+  type ConversationHandles,
   deleteEntry,
   redoAction,
   undoAction,
@@ -32,7 +32,7 @@ export type TimelineController = {
 };
 
 /**
- * The single write path into a campaign's timeline: every change goes through here, is
+ * The single write path into a conversation's timeline: every change goes through here, is
  * pushed onto the undo stack, and is flushed to storage.
  *
  * History is local to this device and this browser, like drafts and settings, because undo
@@ -40,7 +40,7 @@ export type TimelineController = {
  * kept as inverse actions rather than document snapshots, so undo is an ordinary edit that
  * merges and syncs like any other.
  */
-export function createTimelineController(handles: CampaignHandles): TimelineController {
+export function createTimelineController(handles: ConversationHandles): TimelineController {
   const key = HISTORY_PREFIX + handles.timeline.url;
   const stored = readHistory(key);
   const [undoStack, setUndoStack] = createSignal<readonly TimelineAction[]>(stored.undo);

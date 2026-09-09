@@ -3,56 +3,88 @@ import { describe, expect, it } from "vitest";
 import {
   appendEntries,
   appendEntry,
+  archiveConversation,
+  type CampaignIndexDoc,
+  conversationsOf,
   createCampaign,
   createEntry,
+  deleteCampaign,
   deleteEntry,
   entriesOf,
+  FIRST_CONVERSATION_TITLE,
   openCampaign,
   redoAction,
   renameCampaign,
+  renameConversation,
+  restoreConversation,
+  setInstructions,
+  type TimelineDoc,
   undoAction,
   updateEntry,
 } from "./index.ts";
 
+/** A bare entries document, for the tests that are about entries and nothing else. */
+function timelineOnly() {
+  return new Repo().create<TimelineDoc>({ entries: [] });
+}
+
 describe("campaign documents", () => {
-  it("creates an index that points at an empty timeline", () => {
+  it("creates an index with one conversation that points at an empty timeline", async () => {
     const repo = new Repo();
-    const { index, timeline } = createCampaign(repo, "Test campaign");
-    expect(index.doc().name).toBe("Test campaign");
-    expect(index.doc().timelineUrl).toBe(timeline.url);
-    expect(entriesOf(timeline)).toEqual([]);
+    const handles = createCampaign(repo, "Test campaign");
+    expect(handles.index.doc().name).toBe("Test campaign");
+    const [first] = conversationsOf(handles.index);
+    expect(first?.title).toBe(FIRST_CONVERSATION_TITLE);
+    expect(first).toBeDefined();
+    if (!first) return;
+    const opened = await handles.openConversation(first.id);
+    expect(opened.timeline.url).toBe(first.docUrl);
+    expect(entriesOf(opened.timeline)).toEqual([]);
   });
 
-  it("appends entries in order and reopens them from the index url", async () => {
+  it("appends entries in order and reopens them through the index url", async () => {
     const repo = new Repo();
-    const { index, timeline, flush } = createCampaign(repo, "Reopen");
-    const first = createEntry({
+    const handles = createCampaign(repo, "Reopen");
+    const [first] = conversationsOf(handles.index);
+    if (!first) return;
+    const { timeline, flush } = await handles.openConversation(first.id);
+    const opening = createEntry({
       kind: "user",
       text: "I open the door.",
       provenance: { source: "user" },
     });
-    const second = createEntry({
+    const answer = createEntry({
       kind: "ai",
       text: "It creaks.",
-      provenance: { source: "ai", model: "anthropic/claude-haiku-4.5", turnId: first.id },
+      provenance: { source: "ai", model: "anthropic/claude-haiku-4.5", turnId: opening.id },
     });
-    appendEntry(timeline, first);
-    appendEntry(timeline, second);
+    appendEntry(timeline, opening);
+    appendEntry(timeline, answer);
     await flush();
+    await handles.flush();
 
-    const reopened = await openCampaign(repo, index.url);
-    expect(entriesOf(reopened.timeline).map((e) => e.text)).toEqual([
+    const reopened = await openCampaign(repo, handles.index.url);
+    const [again] = conversationsOf(reopened.index);
+    if (!again) return;
+    const conversation = await reopened.openConversation(again.id);
+    expect(entriesOf(conversation.timeline).map((e) => e.text)).toEqual([
       "I open the door.",
       "It creaks.",
     ]);
-    expect(entriesOf(reopened.timeline)[1]?.provenance.model).toBe("anthropic/claude-haiku-4.5");
+    expect(entriesOf(conversation.timeline)[1]?.provenance.model).toBe(
+      "anthropic/claude-haiku-4.5",
+    );
   });
 
   it("flush resolves even for an in-memory repo", async () => {
     const repo = new Repo();
-    const { timeline, flush } = createCampaign(repo, "Flush");
+    const handles = createCampaign(repo, "Flush");
+    const [first] = conversationsOf(handles.index);
+    if (!first) return;
+    const { timeline, flush } = await handles.openConversation(first.id);
     appendEntry(timeline, createEntry({ kind: "user", text: "x", provenance: { source: "user" } }));
     await expect(flush()).resolves.toBeUndefined();
+    await expect(handles.flush()).resolves.toBeUndefined();
   });
 
   it("renames a campaign, ignoring blank names", () => {
@@ -64,9 +96,122 @@ describe("campaign documents", () => {
     expect(index.doc().name).toBe("New name");
   });
 
-  it("edits an entry's text and marks it edited", () => {
+  it("rejects a non-automerge url", async () => {
     const repo = new Repo();
-    const { timeline } = createCampaign(repo, "Edit");
+    await expect(openCampaign(repo, "nope")).rejects.toThrow(/Not an Automerge URL/);
+  });
+
+  it("refuses to open a conversation the index does not list", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Strict");
+    await expect(handles.openConversation("missing")).rejects.toThrow(/No conversation/);
+  });
+
+  it("folds a Slice 0 index with a single timelineUrl into its first conversation", async () => {
+    const repo = new Repo();
+    const timeline = repo.create<TimelineDoc>({ entries: [] });
+    appendEntry(
+      timeline,
+      createEntry({ kind: "user", text: "old feed", provenance: { source: "user" } }),
+    );
+    // The shape Slice 0 wrote: one feed per campaign, no conversations.
+    const legacy = repo.create<CampaignIndexDoc>({
+      name: "Legacy",
+      timelineUrl: timeline.url,
+      createdAt: 1,
+    } as CampaignIndexDoc);
+
+    const handles = await openCampaign(repo, legacy.url);
+    const conversations = conversationsOf(handles.index);
+    expect(conversations).toHaveLength(1);
+    expect(conversations[0]?.title).toBe(FIRST_CONVERSATION_TITLE);
+    expect(conversations[0]?.docUrl).toBe(timeline.url);
+    expect(conversations[0]?.createdAt).toBe(1);
+    expect(handles.index.doc().timelineUrl).toBeUndefined();
+
+    const first = conversations[0];
+    if (!first) return;
+    const opened = await handles.openConversation(first.id);
+    expect(entriesOf(opened.timeline).map((e) => e.text)).toEqual(["old feed"]);
+
+    // Opening again is a no-op: the migration ran once.
+    const again = await openCampaign(repo, legacy.url);
+    expect(conversationsOf(again.index)).toHaveLength(1);
+  });
+
+  it("deletes every document of a campaign and reports the conversations it had", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Doomed");
+    await handles.createConversation("Second");
+    const gone = deleteCampaign(repo, handles.index);
+    expect(gone.map((c) => c.title)).toEqual([FIRST_CONVERSATION_TITLE, "Second"]);
+  });
+});
+
+describe("conversations", () => {
+  it("adds a conversation with an empty timeline of its own", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Many");
+    const created = await handles.createConversation("Downtime");
+    expect(conversationsOf(handles.index).map((c) => c.title)).toEqual([
+      FIRST_CONVERSATION_TITLE,
+      "Downtime",
+    ]);
+    const opened = await handles.openConversation(created.id);
+    expect(entriesOf(opened.timeline)).toEqual([]);
+    const [first] = conversationsOf(handles.index);
+    expect(first?.docUrl).not.toBe(created.docUrl);
+  });
+
+  it("renames, ignoring blank and unchanged titles", () => {
+    const repo = new Repo();
+    const { index } = createCampaign(repo, "Rename");
+    const [first] = conversationsOf(index);
+    if (!first) return;
+    renameConversation(index, first.id, "  The heist  ");
+    expect(conversationsOf(index)[0]?.title).toBe("The heist");
+    renameConversation(index, first.id, "   ");
+    expect(conversationsOf(index)[0]?.title).toBe("The heist");
+    renameConversation(index, "missing", "nothing");
+    expect(conversationsOf(index)).toHaveLength(1);
+  });
+
+  it("archives and restores, and does nothing twice", () => {
+    const repo = new Repo();
+    const { index } = createCampaign(repo, "Archive");
+    const [first] = conversationsOf(index);
+    if (!first) return;
+    archiveConversation(index, first.id);
+    const archivedAt = conversationsOf(index)[0]?.archivedAt;
+    expect(archivedAt).toBeTypeOf("number");
+    archiveConversation(index, first.id);
+    expect(conversationsOf(index)[0]?.archivedAt).toBe(archivedAt);
+    restoreConversation(index, first.id);
+    expect(conversationsOf(index)[0]?.archivedAt).toBeUndefined();
+    restoreConversation(index, first.id);
+    expect(conversationsOf(index)[0]?.archivedAt).toBeUndefined();
+  });
+});
+
+describe("instructions", () => {
+  it("are absent until the campaign writes its own, and can be cleared back", () => {
+    const repo = new Repo();
+    const { index } = createCampaign(repo, "Prompt");
+    expect(index.doc().instructions).toBeUndefined();
+    setInstructions(index, "Write in first person.");
+    expect(index.doc().instructions).toBe("Write in first person.");
+    setInstructions(index, "Write in first person, present tense.");
+    expect(index.doc().instructions).toBe("Write in first person, present tense.");
+    setInstructions(index, "");
+    expect(index.doc().instructions).toBe("");
+    setInstructions(index, undefined);
+    expect(index.doc().instructions).toBeUndefined();
+  });
+});
+
+describe("entries", () => {
+  it("edits an entry's text and marks it edited", () => {
+    const timeline = timelineOnly();
     const entry = createEntry({
       kind: "ai",
       text: "The door creaks.",
@@ -82,8 +227,7 @@ describe("campaign documents", () => {
   });
 
   it("deletes an entry by id and ignores unknown ids", () => {
-    const repo = new Repo();
-    const { timeline } = createCampaign(repo, "Delete");
+    const timeline = timelineOnly();
     const first = createEntry({ kind: "user", text: "one", provenance: { source: "user" } });
     const second = createEntry({ kind: "user", text: "two", provenance: { source: "user" } });
     appendEntry(timeline, first);
@@ -92,17 +236,11 @@ describe("campaign documents", () => {
     deleteEntry(timeline, "missing");
     expect(entriesOf(timeline).map((e) => e.text)).toEqual(["two"]);
   });
-
-  it("rejects a non-automerge url", async () => {
-    const repo = new Repo();
-    await expect(openCampaign(repo, "nope")).rejects.toThrow(/Not an Automerge URL/);
-  });
 });
 
 describe("undo and redo", () => {
   function timelineWith(texts: readonly string[]) {
-    const repo = new Repo();
-    const { timeline } = createCampaign(repo, "History");
+    const timeline = timelineOnly();
     const entries = texts.map((text) =>
       createEntry({ kind: "user", text, provenance: { source: "user" } }),
     );
@@ -113,8 +251,7 @@ describe("undo and redo", () => {
     entriesOf(timeline).map((entry) => entry.text);
 
   it("takes back an append of several entries as one step, and puts them back", () => {
-    const repo = new Repo();
-    const { timeline } = createCampaign(repo, "Reply");
+    const timeline = timelineOnly();
     const parts = ["The door creaks.", "A voice answers."].map((text) =>
       createEntry({ kind: "ai", text, provenance: { source: "ai", turnId: "t1" } }),
     );
