@@ -160,8 +160,9 @@ Markdown export is *a representation, never storage*. The stored thing is a bloc
 type. They can be *pinned* into the library tree as entries later; they are not sheets.
 
 Slice 1's spike (ProseMirror + Automerge, doc size after 1k edits) is the bet everything here
-rests on and it has not been run. The tree, fields and tabs can land before it with a plain
-textarea for the body; the editor slots in when the spike passes.
+rests on. It ran on Sep 09, 2026 and holds — findings inline on the roadmap item. The one
+untested part is the schema for tables, images and mentions, which the basic adapter does not
+cover; Slice 1 writes that adapter first.
 
 ## Settings
 
@@ -246,8 +247,8 @@ silently fail every tool call.
    Settings tab with Instructions moved. Conversations in `campaign-index`. Reuses every part of
    Slice 0. Pulled forward the way Slice 0 was.
 2. **Tools flag** in the catalogue and the picker. Small; alongside 1.
-3. **Library tab.** Tree, create/rename/move/archive, fields panel; textarea body until the Slice 1
-   spike passes, then ProseMirror.
+3. **Library tab.** Done Sep 09, 2026: tree, create/rename/archive, fields panel, ProseMirror body
+   from day one since the spike passed. Move-to-folder and reorder are in the kernel, not yet the UI.
 4. **Serializer and read tools** (Slice 8), after the three-sheet acceptance test.
 
 ## Proposed roadmap edits

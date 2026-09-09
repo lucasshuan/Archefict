@@ -23,7 +23,7 @@ packages/config    Shared tsconfig presets.
 
 ## Data, both apps obey
 
-- Automerge is canonical. One document per thing: `campaign-index` (name, instructions, the conversations; later folders and sheets), `conversation:<id>` (one conversation's timeline of entries), later `sheet:<id>`. Never one document per campaign.
+- Automerge is canonical. One document per thing: `campaign-index` (name, instructions, conversations, folders, sheets), `conversation:<id>` (one conversation's timeline of entries), later `sheet:<id>`. Never one document per campaign.
 - Every write is a function in `packages/crdt`, then `flush()`. Nothing is durable until flush resolves.
 - Mutations return the action they performed. Undo applies the inverse as an ordinary change, so it merges and syncs; document snapshots are never used.
 - Local-only state (drafts, settings, campaign registry) is localStorage under `archefict:*`. Never in a CRDT.
@@ -42,7 +42,8 @@ src/campaign/      Automerge glue: repo, library (registry), store, conversation
 src/components/    UI. Props in, callbacks out. No fetching, no storage.
 src/settings/      store + page. Pattern for a feature that owns state and UI
 src/workspace/     the tabs of a campaign and the panels inside them (docs/workspace.md)
-src/<feature>/     later: library/, plugins/
+src/library/       the Library tab: tree, sheet editor (ProseMirror over Automerge), fields
+src/<feature>/     later: plugins/
 ```
 
 - Solid 1.x. Signals and props. `createDocSignal(handle)` is how a document reaches the UI. No other reactive store until a slice proves the need.
@@ -58,7 +59,7 @@ src/<feature>/     later: library/, plugins/
 - Three foreground tones: `fg` for content, `fg-muted` for labels and chrome, `fg-subtle` for supporting text. A section heading outranks its labels by size and weight (15px semibold, `fg`), never by colour. The accent means "selected" or "act here" — the selected tab, the active sidebar item, the primary button, a highlighted row — and nothing decorative. Explanations belong in an info badge tooltip beside the label, not printed under the control; only text describing the chosen value stays on the page.
 - Every API call may fail. The app works with the server down. Same-origin `/api`, proxied by Vite in dev.
 - The provider key stays on the device. It is never sent to our API.
-- Vite: Automerge is excluded from pre-bundling; dependencies reached only through linked packages are listed in `optimizeDeps.include`.
+- Vite: Automerge is excluded from pre-bundling; dependencies reached only through linked packages are listed in `optimizeDeps.include`. `@automerge/prosemirror` is the opposite case — pre-bundled with the ProseMirror packages and `resolve.dedupe`d — or the editor loads two `prosemirror-model`s and every edit throws.
 
 ## apps/api
 

@@ -20,6 +20,10 @@ export default defineConfig({
       "@automerge/automerge-repo > bs58check",
       "@automerge/automerge-repo > debug",
       "@automerge/automerge-repo > fast-sha256",
+      // The ProseMirror binding must share one prosemirror-model with the editor, so it is
+      // pre-bundled into the ProseMirror graph while the Automerge packages below stay external
+      // to that bundle. Served raw it loads its own copy and every edit throws (Phase 0 spike).
+      "@automerge/prosemirror",
     ],
     // Pre-bundling would create a second copy of the Automerge WASM wrapper next to the one
     // reached through the workspace packages; initializing it twice throws at startup.
@@ -29,6 +33,9 @@ export default defineConfig({
       "@automerge/automerge-repo-storage-indexeddb",
       "@automerge/automerge-repo-network-broadcastchannel",
     ],
+  },
+  resolve: {
+    dedupe: ["prosemirror-model", "prosemirror-state", "prosemirror-view", "prosemirror-transform"],
   },
   server: {
     port: 5173,

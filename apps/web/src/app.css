@@ -295,3 +295,26 @@ dialog::backdrop {
   background: oklch(0 0 0 / 0.55);
   backdrop-filter: blur(3px);
 }
+
+/*
+ * The sheet editor. ProseMirror renders into .ProseMirror; the prose rules it shares with the
+ * rendered narrative come from .narrative-markdown on the same element. This adds only what an
+ * editor needs over a rendering: no outline (the panel is the focus context), room to click
+ * into, and a caret in the accent.
+ */
+@layer components {
+  .sheet-editor .ProseMirror {
+    min-height: 16rem;
+    outline: none;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    caret-color: var(--accent);
+  }
+  .sheet-editor .ProseMirror img {
+    max-width: 100%;
+    border-radius: var(--radius);
+  }
+  .sheet-editor .ProseMirror-selectednode {
+    outline: 2px solid var(--accent);
+  }
+}

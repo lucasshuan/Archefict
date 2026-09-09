@@ -71,6 +71,35 @@ export const Conversation = z.object({
 export type Conversation = z.infer<typeof Conversation>;
 
 // ---------------------------------------------------------------------------
+// Library: folders and sheets. Records in the campaign index; a sheet's body and fields
+// live in their own document, `sheet:<id>`. Folders are their own entity and hold folders
+// and sheets; a sheet holds nothing (docs/workspace.md).
+// ---------------------------------------------------------------------------
+
+export const Folder = z.object({
+  id: z.string().min(1),
+  title: z.string(),
+  /** The folder this one sits in, or null at the root. */
+  parentId: z.string().min(1).nullable(),
+  /** Position among its siblings. Appended on creation; reordering comes later. */
+  order: z.number().int().nonnegative(),
+});
+export type Folder = z.infer<typeof Folder>;
+
+export const SheetSummary = z.object({
+  id: z.string().min(1),
+  title: z.string(),
+  folderId: z.string().min(1).nullable(),
+  order: z.number().int().nonnegative(),
+  /** Automerge url of the document holding the body and fields. */
+  docUrl: z.string().min(1),
+  createdAt: z.number().int().nonnegative(),
+  /** Set when the sheet was put away. Archived, not deleted. */
+  archivedAt: z.number().int().nonnegative().optional(),
+});
+export type SheetSummary = z.infer<typeof SheetSummary>;
+
+// ---------------------------------------------------------------------------
 // Timeline history. Local to one device, never synced: undo belongs to the person.
 // ---------------------------------------------------------------------------
 

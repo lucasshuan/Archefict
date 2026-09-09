@@ -4,20 +4,31 @@ import {
   appendEntries,
   appendEntry,
   archiveConversation,
+  archiveSheet,
   type CampaignIndexDoc,
   conversationsOf,
   createCampaign,
   createEntry,
+  createFolder,
   deleteCampaign,
   deleteEntry,
   entriesOf,
   FIRST_CONVERSATION_TITLE,
+  foldersOf,
+  moveSheet,
   openCampaign,
   redoAction,
+  removeFolder,
+  removeSheetField,
   renameCampaign,
   renameConversation,
+  renameFolder,
+  renameSheet,
   restoreConversation,
+  restoreSheet,
   setInstructions,
+  setSheetField,
+  sheetsOf,
   type TimelineDoc,
   undoAction,
   updateEntry,
@@ -128,6 +139,9 @@ describe("campaign documents", () => {
     expect(conversations[0]?.docUrl).toBe(timeline.url);
     expect(conversations[0]?.createdAt).toBe(1);
     expect(handles.index.doc().timelineUrl).toBeUndefined();
+    // The library came later still: the migration gives an old index empty shelves.
+    expect(handles.index.doc().folders).toEqual([]);
+    expect(handles.index.doc().sheets).toEqual([]);
 
     const first = conversations[0];
     if (!first) return;
@@ -206,6 +220,103 @@ describe("instructions", () => {
     expect(index.doc().instructions).toBe("");
     setInstructions(index, undefined);
     expect(index.doc().instructions).toBeUndefined();
+  });
+});
+
+describe("library", () => {
+  it("creates folders inside folders and sheets inside them, appended in order", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Library");
+    const characters = createFolder(handles.index, "Characters", null);
+    const allies = createFolder(handles.index, "Allies", characters.id);
+    const varn = await handles.createSheet("Varn Ashgrove", allies.id);
+    await handles.createSheet("Mira", allies.id);
+    const notes = await handles.createSheet("Notes", null);
+
+    expect(foldersOf(handles.index).map((f) => [f.title, f.parentId, f.order])).toEqual([
+      ["Characters", null, 0],
+      ["Allies", characters.id, 0],
+    ]);
+    expect(
+      sheetsOf(handles.index)
+        .filter((s) => s.folderId === allies.id)
+        .map((s) => [s.title, s.order]),
+    ).toEqual([
+      ["Varn Ashgrove", 0],
+      ["Mira", 1],
+    ]);
+    expect(notes.order).toBe(0);
+
+    const opened = await handles.openSheet(varn.id);
+    expect(opened.doc.doc()).toEqual({ body: "", fields: {} });
+    await expect(handles.openSheet("missing")).rejects.toThrow(/No sheet/);
+  });
+
+  it("renames, moves, archives and restores sheets", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Sheets");
+    const { index } = handles;
+    const folder = createFolder(index, "Places", null);
+    const sheet = await handles.createSheet("Tavern", null);
+
+    renameSheet(index, sheet.id, "  The Drowned Lantern  ");
+    renameSheet(index, sheet.id, "   ");
+    expect(sheetsOf(index)[0]?.title).toBe("The Drowned Lantern");
+
+    moveSheet(index, sheet.id, folder.id);
+    expect(sheetsOf(index)[0]?.folderId).toBe(folder.id);
+    expect(sheetsOf(index)[0]?.order).toBe(0);
+    moveSheet(index, sheet.id, folder.id);
+    expect(sheetsOf(index)[0]?.order).toBe(0);
+
+    archiveSheet(index, sheet.id);
+    const archivedAt = sheetsOf(index)[0]?.archivedAt;
+    expect(archivedAt).toBeTypeOf("number");
+    archiveSheet(index, sheet.id);
+    expect(sheetsOf(index)[0]?.archivedAt).toBe(archivedAt);
+    restoreSheet(index, sheet.id);
+    expect(sheetsOf(index)[0]?.archivedAt).toBeUndefined();
+  });
+
+  it("renames folders and removes them only once they are empty", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Folders");
+    const { index } = handles;
+    const folder = createFolder(index, "Factions", null);
+    renameFolder(index, folder.id, " Guilds ");
+    renameFolder(index, folder.id, "");
+    expect(foldersOf(index)[0]?.title).toBe("Guilds");
+
+    const inside = await handles.createSheet("Thieves", folder.id);
+    expect(removeFolder(index, folder.id)).toBe(false);
+    expect(foldersOf(index)).toHaveLength(1);
+
+    const child = createFolder(index, "Sub", folder.id);
+    moveSheet(index, inside.id, null);
+    expect(removeFolder(index, folder.id)).toBe(false);
+    expect(removeFolder(index, child.id)).toBe(true);
+    expect(removeFolder(index, folder.id)).toBe(true);
+    expect(foldersOf(index)).toEqual([]);
+    expect(removeFolder(index, "missing")).toBe(false);
+  });
+
+  it("sets, rewrites and removes a sheet's fields", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Fields");
+    const sheet = await handles.createSheet("Varn", null);
+    const { doc } = await handles.openSheet(sheet.id);
+
+    setSheetField(doc, "class", "Rogue");
+    setSheetField(doc, " level ", "5");
+    setSheetField(doc, "", "nothing");
+    expect(doc.doc().fields).toEqual({ class: "Rogue", level: "5" });
+
+    setSheetField(doc, "class", "Rogue / Thief");
+    expect(doc.doc().fields["class"]).toBe("Rogue / Thief");
+
+    removeSheetField(doc, "level");
+    removeSheetField(doc, "level");
+    expect(doc.doc().fields).toEqual({ class: "Rogue / Thief" });
   });
 });
 

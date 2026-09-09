@@ -1,15 +1,18 @@
 import type { CampaignHandles } from "@archefict/crdt";
 import BookOpenText from "lucide-solid/icons/book-open-text";
+import LibraryIcon from "lucide-solid/icons/library";
 import Settings from "lucide-solid/icons/settings";
 import { createResource, createSignal, Show } from "solid-js";
 import { createConversationStore } from "./campaign/conversations.ts";
 import { createDocSignal } from "./campaign/doc-signal.ts";
 import { createBrowserRepo } from "./campaign/repo.ts";
+import { createSheetsStore } from "./campaign/sheets.ts";
 import { type Library, openLibrary, requestPersistentStorage } from "./campaign/store.ts";
 import { EditableTitle } from "./components/EditableTitle.tsx";
 import { GUEST, Sidebar } from "./components/Sidebar.tsx";
 import { SidebarToggle } from "./components/SidebarToggle.tsx";
 import { type Tab, TabBar } from "./components/TabBar.tsx";
+import { LibraryTab } from "./library/LibraryTab.tsx";
 import { SettingsPage } from "./settings/SettingsPage.tsx";
 import { createSettingsStore, type SettingsStore } from "./settings/store.ts";
 import { CampaignSettingsTab } from "./workspace/CampaignSettingsTab.tsx";
@@ -89,14 +92,15 @@ function Shell(props: { library: Library }) {
   );
 }
 
-type TabId = "story" | "settings";
+type TabId = "story" | "library" | "settings";
 
 /**
- * The default tabs. Library joins when there is a library to show. Users compose their own
- * in Slice 5; Settings is the one that cannot be removed (docs/workspace.md).
+ * The default tabs. Users compose their own in Slice 5; Settings is the one that cannot be
+ * removed (docs/workspace.md).
  */
 const TABS: readonly Tab<TabId>[] = [
   { id: "story", label: "Story", icon: BookOpenText },
+  { id: "library", label: "Library", icon: LibraryIcon },
   { id: "settings", label: "Campaign settings", icon: Settings },
 ];
 
@@ -116,6 +120,7 @@ function Session(props: {
 }) {
   const index = createDocSignal(props.handles.index);
   const conversations = createConversationStore(props.handles, index);
+  const sheets = createSheetsStore(props.handles, index);
   const [tab, setTab] = createSignal<TabId>("story");
   const instructions = () => index().instructions ?? props.settings.settings().systemPrompt;
 
@@ -145,6 +150,15 @@ function Session(props: {
           instructions={instructions}
           blocked={props.blocked || tab() !== "story"}
         />
+      </div>
+      <div
+        id="tabpanel-library"
+        role="tabpanel"
+        aria-labelledby="tab-library"
+        class="min-h-0 flex-1 flex-col"
+        classList={{ flex: tab() === "library", hidden: tab() !== "library" }}
+      >
+        <LibraryTab handles={props.handles} sheets={sheets} />
       </div>
       <div
         id="tabpanel-settings"

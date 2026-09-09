@@ -91,16 +91,16 @@ Pulled forward from Slices 3 and 5 so the library has somewhere to land. Design:
 - [x] (kernel) `Conversation` shape; `campaign-index` lists conversations and carries `instructions`; one `conversation:<id>` entries document each; Slice 0 indexes migrate on open
 - [x] Campaign Settings tab: narrator instructions per campaign, synced; unset means the device default, and the Settings page's field is now that default
 - [x] Undo history, drafts and the open conversation are per conversation and per device
-- [ ] Library tab (Slice 1 lands it); reorder and delete conversations; tab-level `⋯` for hidden panels and layout reset
+- [ ] Reorder and delete conversations; tab-level `⋯` for hidden panels and layout reset (the Library tab landed Sep 09, 2026, in Slice 1)
 - [ ] **Play:** one session across two conversations. Does splitting the story into threads help or scatter it?
 
 ### Slice 1 - A sheet you can write
-- [ ] ProseMirror bound to Automerge; one sheet document persisted to IndexedDB **(bet)**
-- [ ] Free-form fields panel (key: value) on every sheet
-- [ ] References and mentions between sheets with stable ids; tables; images from local assets
-- [ ] Sanitized rendering on every content path; external images blocked by default
-- [ ] (kernel) stable ids; Sheet shape: body, fields, refs, meta
-- [ ] (kernel) `sheet:<id>` Automerge document shape
+- [x] ProseMirror bound to Automerge; one sheet document persisted to IndexedDB **(bet)** — built Sep 09, 2026 as the Library tab: tree panel (folders as their own entity, create/rename/archive/restore, remove empty folders), sheet panel (title, ProseMirror body, block commands in the panel `⋯`), fields panel. `@automerge/prosemirror` pre-bundled with ProseMirror and deduped in Vite, as the spike found. Move-to-folder and reorder exist in the kernel, not yet in the UI
+- [x] Free-form fields panel (key: value) on every sheet (Sep 09, 2026; values are text diffs, so two devices merge)
+- [ ] References and mentions between sheets with stable ids; tables; images from local assets. The basic schema adapter already carries an image block and a `link` mark; a mention can ride the link mark with a `sheet:` href. Tables are the open gap
+- [ ] Sanitized rendering on every content path; external images blocked by default. Pasted `<img>` is stripped for now, until images come from local assets
+- [ ] (kernel) stable ids; Sheet shape: body, fields, refs, meta. Body and fields done Sep 09, 2026; refs and meta pending
+- [x] (kernel) `sheet:<id>` Automerge document shape; `Folder` and `SheetSummary` records in `campaign-index` (Sep 09, 2026)
 - [ ] **Play:** rewrite three characters and one location from a past campaign. Notice what the editor cannot express.
 
 ### Slice 2 - A campaign you will not lose

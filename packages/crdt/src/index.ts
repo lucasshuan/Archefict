@@ -5,8 +5,9 @@
  * Automerge is canonical; everything else is a projection (docs/stack.md).
  *
  * Document granularity (never one document per campaign):
- *   campaign-index     -> name, instructions, the list of conversations
+ *   campaign-index     -> name, instructions, conversations, folders, sheets
  *   conversation:<id>  -> one conversation's timeline of narrative entries
+ *   sheet:<id>         -> one sheet's body (rich text) and fields
  *
  * A conversation is a record in the index; its entries are a document of their own, so a
  * long one never weighs on the others and undo history stays per conversation. The entries
@@ -23,8 +24,10 @@
  */
 import {
   type Conversation,
+  type Folder,
   NarrativeEntry,
   type Provenance,
+  type SheetSummary,
   type TimelineAction,
 } from "@archefict/schema";
 import { updateText } from "@automerge/automerge";
@@ -35,10 +38,19 @@ export type TimelineDoc = {
   entries: NarrativeEntry[];
 };
 
+export type SheetDoc = {
+  /** Rich text in Automerge's rich-text schema; ProseMirror edits it through @automerge/prosemirror. */
+  body: string;
+  /** The structured half: what the AI reads first, and what Slice 4's components attach to. */
+  fields: Record<string, string>;
+};
+
 export type CampaignIndexDoc = {
   name: string;
   createdAt: number;
   conversations: Conversation[];
+  folders: Folder[];
+  sheets: SheetSummary[];
   /** The narrator's instructions for this campaign. Absent: the device's default applies. */
   instructions?: string;
   /** Slice 0 kept one feed per campaign here. `openCampaign` folds it into `conversations`. */
@@ -59,12 +71,23 @@ export type ConversationHandles = {
   flush: () => Promise<void>;
 };
 
+export type SheetHandles = {
+  id: string;
+  doc: DocHandle<SheetDoc>;
+  /** Resolves once pending changes to the sheet have reached storage. */
+  flush: () => Promise<void>;
+};
+
 export type CampaignHandles = {
   index: DocHandle<CampaignIndexDoc>;
   /** Opens the entries of a conversation listed in the index. */
   openConversation: (id: string) => Promise<ConversationHandles>;
   /** Adds a conversation with an empty timeline. Durable before it returns. */
   createConversation: (title: string) => Promise<Conversation>;
+  /** Opens the body and fields of a sheet listed in the index. */
+  openSheet: (id: string) => Promise<SheetHandles>;
+  /** Adds an empty sheet to a folder, or to the root with null. Durable before it returns. */
+  createSheet: (title: string, folderId: string | null) => Promise<SheetSummary>;
   /** Resolves once pending changes to the index have reached storage. */
   flush: () => Promise<void>;
 };
@@ -75,6 +98,8 @@ export function createCampaign(repo: Repo, name: string): CampaignHandles {
     name,
     createdAt: Date.now(),
     conversations: [first.record],
+    folders: [],
+    sheets: [],
   });
   return handlesFor(repo, index);
 }
@@ -100,6 +125,9 @@ export function deleteCampaign(
   for (const conversation of conversations) {
     if (isValidAutomergeUrl(conversation.docUrl)) repo.delete(conversation.docUrl);
   }
+  for (const sheet of index.doc().sheets) {
+    if (isValidAutomergeUrl(sheet.docUrl)) repo.delete(sheet.docUrl);
+  }
   repo.delete(index.documentId);
   return conversations;
 }
@@ -124,6 +152,31 @@ function handlesFor(repo: Repo, index: DocHandle<CampaignIndexDoc>): CampaignHan
       await repo.flush([index.documentId, timeline.documentId]);
       return record;
     },
+    async openSheet(id) {
+      const record = index.doc().sheets.find((sheet) => sheet.id === id);
+      if (record === undefined) throw new Error(`No sheet ${id} in this campaign`);
+      if (!isValidAutomergeUrl(record.docUrl)) {
+        throw new Error(`Sheet ${id} does not point at an Automerge URL`);
+      }
+      const doc = await repo.find<SheetDoc>(record.docUrl);
+      return { id, doc, flush: () => repo.flush([doc.documentId]) };
+    },
+    async createSheet(title, folderId) {
+      const doc = repo.create<SheetDoc>({ body: "", fields: {} });
+      const record: SheetSummary = {
+        id: crypto.randomUUID(),
+        title,
+        folderId,
+        order: index.doc().sheets.filter((sheet) => sheet.folderId === folderId).length,
+        docUrl: doc.url,
+        createdAt: Date.now(),
+      };
+      index.change((d) => {
+        d.sheets.push(record);
+      });
+      await repo.flush([index.documentId, doc.documentId]);
+      return record;
+    },
     flush: () => repo.flush([index.documentId]),
   };
 }
@@ -145,20 +198,27 @@ function newConversation(
  */
 function migrateIndex(index: DocHandle<CampaignIndexDoc>): void {
   const current = index.doc() as Partial<CampaignIndexDoc>;
-  if (current.conversations !== undefined) return;
+  const needsConversations = current.conversations === undefined;
+  const needsLibrary = current.folders === undefined || current.sheets === undefined;
+  if (!needsConversations && !needsLibrary) return;
   index.change((doc) => {
-    const legacy = doc.timelineUrl;
-    doc.conversations = legacy
-      ? [
-          {
-            id: crypto.randomUUID(),
-            title: FIRST_CONVERSATION_TITLE,
-            docUrl: legacy,
-            createdAt: doc.createdAt,
-          },
-        ]
-      : [];
-    delete doc.timelineUrl;
+    if (needsConversations) {
+      const legacy = doc.timelineUrl;
+      doc.conversations = legacy
+        ? [
+            {
+              id: crypto.randomUUID(),
+              title: FIRST_CONVERSATION_TITLE,
+              docUrl: legacy,
+              createdAt: doc.createdAt,
+            },
+          ]
+        : [];
+      delete doc.timelineUrl;
+    }
+    // The library arrived after the first campaigns: an index without one gets empty shelves.
+    if (doc.folders === undefined) doc.folders = [];
+    if (doc.sheets === undefined) doc.sheets = [];
   });
 }
 
@@ -209,6 +269,124 @@ export function restoreConversation(index: DocHandle<CampaignIndexDoc>, id: stri
   index.change((doc) => {
     const target = doc.conversations.find((c) => c.id === id);
     if (target) delete target.archivedAt;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Library. Folders and sheet records live in the index; a sheet's content is its own document.
+// ---------------------------------------------------------------------------
+
+export function foldersOf(index: DocHandle<CampaignIndexDoc>): readonly Folder[] {
+  return index.doc().folders;
+}
+
+export function sheetsOf(index: DocHandle<CampaignIndexDoc>): readonly SheetSummary[] {
+  return index.doc().sheets;
+}
+
+export function createFolder(
+  index: DocHandle<CampaignIndexDoc>,
+  title: string,
+  parentId: string | null,
+): Folder {
+  const folder: Folder = {
+    id: crypto.randomUUID(),
+    title,
+    parentId,
+    order: index.doc().folders.filter((f) => f.parentId === parentId).length,
+  };
+  index.change((doc) => {
+    doc.folders.push(folder);
+  });
+  return folder;
+}
+
+export function renameFolder(index: DocHandle<CampaignIndexDoc>, id: string, title: string): void {
+  const trimmed = title.trim();
+  if (trimmed === "") return;
+  const current = index.doc().folders.find((f) => f.id === id);
+  if (current === undefined || current.title === trimmed) return;
+  index.change((doc) => {
+    const target = doc.folders.find((f) => f.id === id);
+    if (target) target.title = trimmed;
+  });
+}
+
+/** Removes an empty folder. Returns false, and changes nothing, while anything is still in it. */
+export function removeFolder(index: DocHandle<CampaignIndexDoc>, id: string): boolean {
+  const doc = index.doc();
+  const at = doc.folders.findIndex((f) => f.id === id);
+  if (at < 0) return false;
+  const occupied =
+    doc.folders.some((f) => f.parentId === id) || doc.sheets.some((s) => s.folderId === id);
+  if (occupied) return false;
+  index.change((d) => {
+    d.folders.splice(at, 1);
+  });
+  return true;
+}
+
+export function renameSheet(index: DocHandle<CampaignIndexDoc>, id: string, title: string): void {
+  const trimmed = title.trim();
+  if (trimmed === "") return;
+  const current = index.doc().sheets.find((s) => s.id === id);
+  if (current === undefined || current.title === trimmed) return;
+  index.change((doc) => {
+    const target = doc.sheets.find((s) => s.id === id);
+    if (target) target.title = trimmed;
+  });
+}
+
+/** Moves a sheet into another folder, or to the root with null, appending it there. */
+export function moveSheet(
+  index: DocHandle<CampaignIndexDoc>,
+  id: string,
+  folderId: string | null,
+): void {
+  const current = index.doc().sheets.find((s) => s.id === id);
+  if (current === undefined || current.folderId === folderId) return;
+  const order = index.doc().sheets.filter((s) => s.folderId === folderId).length;
+  index.change((doc) => {
+    const target = doc.sheets.find((s) => s.id === id);
+    if (target) {
+      target.folderId = folderId;
+      target.order = order;
+    }
+  });
+}
+
+export function archiveSheet(index: DocHandle<CampaignIndexDoc>, id: string): void {
+  const current = index.doc().sheets.find((s) => s.id === id);
+  if (current === undefined || current.archivedAt !== undefined) return;
+  index.change((doc) => {
+    const target = doc.sheets.find((s) => s.id === id);
+    if (target) target.archivedAt = Date.now();
+  });
+}
+
+export function restoreSheet(index: DocHandle<CampaignIndexDoc>, id: string): void {
+  const current = index.doc().sheets.find((s) => s.id === id);
+  if (current === undefined || current.archivedAt === undefined) return;
+  index.change((doc) => {
+    const target = doc.sheets.find((s) => s.id === id);
+    if (target) delete target.archivedAt;
+  });
+}
+
+/** Sets one field. A text diff when it exists already, so two devices editing one value merge. */
+export function setSheetField(sheet: DocHandle<SheetDoc>, key: string, value: string): void {
+  const trimmed = key.trim();
+  if (trimmed === "" || sheet.doc().fields[trimmed] === value) return;
+  sheet.change((doc) => {
+    if (typeof doc.fields[trimmed] === "string") updateText(doc, ["fields", trimmed], value);
+    else doc.fields[trimmed] = value;
+  });
+}
+
+export function removeSheetField(sheet: DocHandle<SheetDoc>, key: string): void {
+  if (!(key in sheet.doc().fields)) return;
+  sheet.change((doc) => {
+    delete doc.fields[key];
   });
 }
 

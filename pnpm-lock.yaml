@@ -188,6 +188,9 @@ catalogs:
     prosemirror-model:
       specifier: 1.25.11
       version: 1.25.11
+    prosemirror-schema-list:
+      specifier: 1.5.1
+      version: 1.5.1
     prosemirror-state:
       specifier: 1.4.4
       version: 1.4.4
@@ -357,6 +360,9 @@ importers:
       '@automerge/automerge-repo-storage-indexeddb':
         specifier: 'catalog:'
         version: 2.5.6
+      '@automerge/prosemirror':
+        specifier: 'catalog:'
+        version: 0.2.0
       '@lobehub/icons-static-svg':
         specifier: 'catalog:'
         version: 1.95.0
@@ -372,6 +378,27 @@ importers:
       marked:
         specifier: 'catalog:'
         version: 18.0.11
+      prosemirror-commands:
+        specifier: 'catalog:'
+        version: 1.7.2
+      prosemirror-history:
+        specifier: 'catalog:'
+        version: 1.5.0
+      prosemirror-keymap:
+        specifier: 'catalog:'
+        version: 1.2.3
+      prosemirror-model:
+        specifier: 'catalog:'
+        version: 1.25.11
+      prosemirror-schema-list:
+        specifier: 'catalog:'
+        version: 1.5.1
+      prosemirror-state:
+        specifier: 'catalog:'
+        version: 1.4.4
+      prosemirror-view:
+        specifier: 'catalog:'
+        version: 1.42.3
       solid-js:
         specifier: 'catalog:'
         version: 1.9.15
