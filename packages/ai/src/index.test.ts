@@ -2,6 +2,7 @@ import type { NarrativeEntry } from "@archefict/schema";
 import { describe, expect, it } from "vitest";
 import {
   CONTEXT_WINDOW_ENTRIES,
+  CONTINUE_INSTRUCTION,
   DEFAULT_MODEL,
   SUGGESTED_MODELS,
   splitReply,
@@ -38,6 +39,28 @@ describe("toModelMessages", () => {
       { role: "assistant", content: "The door creaks.\nA voice answers." },
       { role: "user", content: "I enter." },
     ]);
+  });
+
+  it("ends a continue on the instruction, so the request never ends on the assistant", () => {
+    const messages = toModelMessages(
+      [entry("user", "I knock.", 1), entry("ai", "The door creaks.", 2)],
+      "continue",
+    );
+    expect(messages).toEqual([
+      { role: "user", content: "I knock." },
+      { role: "assistant", content: "The door creaks." },
+      { role: "user", content: CONTINUE_INSTRUCTION },
+    ]);
+  });
+
+  it("keeps the continue instruction when the context window is full", () => {
+    const many = Array.from({ length: CONTEXT_WINDOW_ENTRIES + 10 }, (_, i) =>
+      entry(i % 2 === 0 ? "user" : "ai", `m${i}`, i),
+    );
+    expect(toModelMessages(many, "continue").at(-1)).toEqual({
+      role: "user",
+      content: CONTINUE_INSTRUCTION,
+    });
   });
 
   it("keeps only the most recent messages, counted after merging", () => {

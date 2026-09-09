@@ -3,16 +3,15 @@ import type { NarrativeEntry } from "@archefict/schema";
 import { createEffect, createMemo, For, Index, on, Show } from "solid-js";
 import { EntryView } from "./EntryView.tsx";
 
+type Kind = NarrativeEntry["kind"];
+
 /**
- * A reply is stored as one entry per line (see splitReply). Consecutive AI entries from the
- * same turn are one run and sit as close as paragraphs; a new speaker or turn gets the wide gap.
+ * A reply is stored as one entry per line (see splitReply), and a continue carries the same
+ * prose on under a new turn id. Consecutive AI entries are one run whatever turn produced
+ * them: they sit as close as paragraphs, and only a change of speaker opens the wide gap.
  */
-function continuesRun(previous: NarrativeEntry | undefined, entry: NarrativeEntry): boolean {
-  if (previous === undefined) return false;
-  if (previous.kind !== "ai" || entry.kind !== "ai") return false;
-  const a = previous.provenance.turnId;
-  const b = entry.provenance.turnId;
-  return a === undefined || b === undefined || a === b;
+function continuesRun(previous: Kind | undefined, entry: Kind): boolean {
+  return previous === "ai" && entry === "ai";
 }
 
 export function NarrativeFeed(props: {
@@ -59,7 +58,7 @@ export function NarrativeFeed(props: {
           {(entry, index) => (
             <EntryView
               entry={entry}
-              continued={continuesRun(props.entries[index() - 1], entry)}
+              continued={continuesRun(props.entries[index() - 1]?.kind, entry.kind)}
               onEdit={(text) => props.onEdit(entry.id, text)}
               onDelete={() => props.onDelete(entry.id)}
             />
@@ -79,7 +78,7 @@ export function NarrativeFeed(props: {
                       return text();
                     },
                   }}
-                  continued={i > 0}
+                  continued={i > 0 || continuesRun(props.entries.at(-1)?.kind, "ai")}
                   streaming={i === parts().length - 1}
                 />
               )}

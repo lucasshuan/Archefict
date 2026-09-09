@@ -40,12 +40,29 @@ Use Markdown for headings, emphasis, lists, and blockquotes when it makes the sc
  */
 export const CONTEXT_WINDOW_ENTRIES = 40;
 
+/** A reply answers a new player line. A continue picks up from a timeline already ending in one. */
+export type TurnMode = "reply" | "continue";
+
+/**
+ * What the narrator is told when the player sends nothing.
+ *
+ * A continue's timeline already ends with an assistant turn, and a request that ends there
+ * reads as finished: the model closes the turn and streams nothing back. This asks for the
+ * next beat instead. It is sent, never stored, so it cannot pile up in the timeline.
+ */
+export const CONTINUE_INSTRUCTION =
+  "Continue the narration from exactly where it stopped, as if it were the same reply. Do not repeat or summarise what you already wrote, and do not act for the player.";
+
 /**
  * Builds the model's view of the timeline. Consecutive entries from the same side collapse
  * into one message, so a reply the app split into editable parts reads as the single
- * assistant turn it was.
+ * assistant turn it was. A continue ends on the instruction, past the context window: the
+ * request must end with a user message or the model has nothing to answer.
  */
-export function toModelMessages(entries: readonly NarrativeEntry[]): ModelMessage[] {
+export function toModelMessages(
+  entries: readonly NarrativeEntry[],
+  mode: TurnMode = "reply",
+): ModelMessage[] {
   const messages: ModelMessage[] = [];
   for (const entry of entries) {
     if (entry.text.trim() === "") continue;
@@ -58,7 +75,9 @@ export function toModelMessages(entries: readonly NarrativeEntry[]): ModelMessag
       messages.push({ role, content: entry.text });
     }
   }
-  return messages.slice(-CONTEXT_WINDOW_ENTRIES);
+  const recent = messages.slice(-CONTEXT_WINDOW_ENTRIES);
+  if (mode === "continue") recent.push({ role: "user", content: CONTINUE_INSTRUCTION });
+  return recent;
 }
 
 function roleOf(kind: NarrativeEntry["kind"]): "user" | "assistant" | null {
@@ -142,6 +161,8 @@ export type NarrationRequest = {
   model: string;
   systemPrompt: string;
   entries: readonly NarrativeEntry[];
+  /** Defaults to a reply. */
+  mode?: TurnMode;
   signal?: AbortSignal;
 };
 
@@ -167,7 +188,7 @@ export function streamNarration(request: NarrationRequest): Narration {
   const result = streamText({
     model: openrouter(request.model),
     system: request.systemPrompt,
-    messages: toModelMessages(request.entries),
+    messages: toModelMessages(request.entries, request.mode ?? "reply"),
     ...(request.signal ? { abortSignal: request.signal } : {}),
   });
 

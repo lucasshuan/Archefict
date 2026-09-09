@@ -66,6 +66,7 @@ export function createTurnRunner(options: {
         model: settings.narratorModel,
         systemPrompt: settings.systemPrompt,
         entries: options.entries(),
+        mode: trimmed === "" ? "continue" : "reply",
         signal: controller.signal,
       });
       for await (const chunk of narration.text) {
@@ -73,6 +74,9 @@ export function createTurnRunner(options: {
         setStreamingText(reply);
       }
       const usage = await narration.usage;
+      // Nothing to write, so say why: otherwise the spinner just vanishes and the story
+      // stands still, which reads as a bug in the app rather than a turn the model refused.
+      if (reply.trim() === "") setError("The narrator returned nothing. Try again.");
       await commitReply(reply, { model: settings.narratorModel, turnId, usage });
     } catch (caught) {
       if (controller.signal.aborted) {
