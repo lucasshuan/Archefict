@@ -62,7 +62,9 @@ export function EntryView(props: {
           "flex-1 rounded-xl px-3 py-1.5 transition-[background-color,border-radius] duration-200 ease-out group-hover:rounded-br-none group-hover:bg-surface group-focus-within:rounded-br-none group-focus-within:bg-surface motion-reduce:transition-none":
             !user() && !editing(),
           "flex-1 rounded-2xl bg-surface px-4 py-3": !user() && editing(),
-          "ring-2 ring-accent/50": editing(),
+          // Inset, so the highlight never paints outside the box and into the gutter the
+          // toolbar layer owns.
+          "inset-ring-2 inset-ring-accent/50": editing(),
           "font-narrative text-[1.05rem] leading-relaxed": props.entry.kind === "ai",
           "text-fg-muted text-sm italic": props.entry.kind === "system",
         }}
@@ -93,10 +95,19 @@ export function EntryView(props: {
           corner squares off, so the two read as one shape arriving, not a card fading in.
           Pointer events are off while hidden: the hidden position overlaps the entry. */}
       <div class="flex w-14 shrink-0 flex-col justify-end self-stretch">
-        <Show when={editable() && !editing()}>
+        <Show when={editable()}>
           <div
-            class="pointer-events-none sticky -bottom-2 flex -translate-x-1.5 gap-0.5 rounded-lg rounded-l-none p-0.5 opacity-0 transition-[opacity,translate] duration-200 ease-out group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 motion-reduce:translate-x-0 motion-reduce:transition-none"
-            classList={{ "bg-surface-raised": user(), "bg-surface": !user() }}
+            class="pointer-events-none sticky -bottom-2 flex -translate-x-1.5 gap-0.5 rounded-lg rounded-l-none p-0.5 opacity-0 transition-[opacity,translate] duration-200 ease-out motion-reduce:translate-x-0 motion-reduce:transition-none"
+            inert={editing()}
+            classList={{
+              "bg-surface-raised": user(),
+              "bg-surface": !user(),
+              // Hidden while editing, but still mounted: a sticky element is its own paint
+              // layer, and unmounting it in the same frame the taller editor collapses
+              // leaves its pixels behind as a stale streak down the gutter.
+              "group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100":
+                !editing(),
+            }}
           >
             <button
               type="button"
