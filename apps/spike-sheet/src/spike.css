@@ -1,0 +1,134 @@
+/* Throwaway styling for a throwaway app. No tokens on purpose: this is not the product. */
+:root {
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+  background: #0f1117;
+  color: #e8e4dc;
+  font:
+    14px system-ui,
+    sans-serif;
+}
+.spike {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  padding: 24px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+.muted {
+  color: #8a8680;
+  font-size: 12px;
+}
+.title {
+  width: 100%;
+  box-sizing: border-box;
+  font:
+    600 20px system-ui,
+    sans-serif;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #2a2e3a;
+  color: inherit;
+  padding: 6px 0;
+  margin-bottom: 12px;
+  outline: none;
+}
+.title:focus {
+  border-bottom-color: #c9a86a;
+}
+.editor .ProseMirror {
+  min-height: 320px;
+  padding: 14px 16px;
+  background: #171a22;
+  border: 1px solid #2a2e3a;
+  border-radius: 10px;
+  outline: none;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 16px;
+}
+.editor .ProseMirror:focus {
+  border-color: #c9a86a;
+}
+.editor .ProseMirror p {
+  margin: 0 0 0.6em;
+}
+h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a8680;
+  margin: 18px 0 8px;
+}
+.fields,
+.bursts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.fields li {
+  display: grid;
+  grid-template-columns: 90px 1fr 28px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.fields .key {
+  color: #b5b0a6;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+input,
+button {
+  font: inherit;
+  color: inherit;
+}
+.fields input,
+.add input {
+  background: #0f1117;
+  border: 1px solid #2a2e3a;
+  border-radius: 6px;
+  padding: 4px 8px;
+  min-width: 0;
+}
+.add {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: 6px;
+  margin-top: 8px;
+}
+button {
+  background: #232838;
+  border: 1px solid #2f3547;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.stats td {
+  padding: 2px 10px 2px 0;
+  font-variant-numeric: tabular-nums;
+}
+.stats td:first-child {
+  color: #8a8680;
+}
+.bursts li {
+  margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+}
+code {
+  font-size: 12px;
+  color: #b5b0a6;
+}

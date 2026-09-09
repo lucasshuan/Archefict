@@ -28,7 +28,7 @@
 - [ ] Revise `PRODUCT.md` with the outcomes above. Keep it the truth.
 
 ### Playable spikes (throwaway, inside a scratch app shell so you can poke them)
-- [ ] Automerge 3 + ProseMirror: edit a sheet with body + fields, sync two tabs, measure doc size after 1k edits. **(bet)**
+- [x] Automerge 3 + ProseMirror: edit a sheet with body + fields, sync two tabs, measure doc size after 1k edits. **(bet) Ran Sep 09, 2026 (`apps/spike-sheet`): holds.** Rich text, marks and fields sync both ways between tabs and survive a reload. 1,000 editor edits: ~11 B each, 0.6 → 11.7 KB; 1,000 rewrites of one field: ~8 B each, → 19.9 KB; 2,053 changes, ~5 B per body char. Findings that change the plan: (1) `@automerge/prosemirror` must be *pre-bundled with* the ProseMirror packages and `resolve.dedupe`d in Vite — served raw it loads a second `prosemirror-model` and every edit throws; carry that into `apps/web/vite.config.ts` for Slice 1. (2) `handle.change` costs 7–16 ms per call in a tight loop through automerge-repo, so imports and AI-proposed batches go in one change, never one per field. (3) The basic schema adapter covers paragraphs, headings, lists, quotes, code, an image block and link/em/strong/code marks. Tables are the one gap, and mentions can ride the link mark. The binding is 0.2.0 and says so.
 - [ ] QuickJS in Worker in sandboxed cross-origin iframe: run untrusted code, enforce CPU + memory limits, kill it, call a host capability. **(bet)**
 - [ ] Panel layout with plugin iframes in a fixed top layer: drag panels, confirm iframes never reload. **(bet)**
 - [ ] Reactive projection: Solid stores vs TanStack DB over the same Automerge change stream, with one join (timeline x sheets). Pick one. **(bet)**
