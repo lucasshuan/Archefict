@@ -23,7 +23,9 @@ Origin: running AI RPGs with campaign data spread across Fibery, Notion and Obsi
 * Import and export
 
 ## Sheets
-* Rich text markdown: tables, images and references
+* Rich text: tables, images and references. Stored as structure, never as markup
+* Fields written inline as you type, kept structured: `::` sets one, `{{ }}` shows one, `[[ ]]` links a sheet
+* A field can belong to another sheet, so a fact is written once and shown anywhere
 
 ## AI
 * On-demand code execution
@@ -37,6 +39,7 @@ Origin: running AI RPGs with campaign data spread across Fibery, Notion and Obsi
 * Enabled/installed per campaign
 * Advanced application tools available via code
 * Custom views, timeline components, chat input control, HUDs, overlays and more
+* Custom sheet parts, and whole sheets a plugin draws itself
 * No access to user data, other campaigns, browser cookies or account secrets
 * User can download and import one outside our cloud with an warning
 

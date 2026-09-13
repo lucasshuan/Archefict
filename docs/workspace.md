@@ -1,8 +1,10 @@
 # The campaign workspace
 
-> September 09, 2026. The names and the folder model were decided the same day and are marked
-> so; the rest is the recommended shape and changes when the code does. `ROADMAP.md` takes the
-> edits listed at the end; this file is the reference for the workspace until then.
+> September 09, 2026, revised September 11. The names and the folder model were decided the same
+> day and are marked so; the rest is the recommended shape and changes when the code does.
+> This file owns the **workspace**: tabs, panels, and how they are arranged. Two things it used to
+> own moved out on Sep 11 — the sheet itself is `sheets.md`, and what the model sees is
+> `ai-context.md`. `ROADMAP.md` has taken the edits listed at the end.
 
 A campaign is a set of **tabs**. A tab is a full-screen arrangement of **panels**. A panel shows one
 kind of thing — the narrative, a list of conversations, the library tree, one sheet, settings —
@@ -18,7 +20,8 @@ content.
 | **Component** | A typed bundle of fields attached to a sheet (Slice 4). Unchanged. | A layout unit. |
 | **Conversation** | One thread of play; a document of narrative entries. | The campaign's only feed. |
 | **Folder** | A node of the library tree. Holds folders and sheets, nothing else. | A sheet. |
-| **Sheet** | A document in the library: body, fields, refs. Has no children. | An HTML page. |
+| **Sheet** | A document in the library: body, fields, refs, view (`sheets.md`). Has no children. | An HTML page. |
+| **Field** | A named value on a sheet. Typed inline, stored in a map (`sheets.md`). | Text inside the prose. |
 
 The brief used *component* for layout units. Slice 4 already uses it for the field bundles that
 give a sheet structure, and the AI serialization is "driven by attached components". Two meanings
@@ -108,22 +111,33 @@ Settings is a tab with one panel and an almost empty `⋯`. Uniformity is worth 
 ## Library
 
 ```
-┌────────────────────────┬────────────────────────────────────────────────┬──────────────┐
-│ Library         [+] ⋯  │ Varn Ashgrove                              ⋯  │ Fields    ⋯  │
-│ ▾ Characters           │                                                │ class  Rogue │
-│   ▾ Allies             │   …body…                                       │ level  5     │
-│     Varn Ashgrove   ●  │                                                │ status alive │
-│     Mira             │                                                │ faction  →   │
-│   ▸ Rivals             │                                                │              │
-│ ▸ Places               │                                                │ + field      │
-│ ▸ Factions             │                                                │              │
-└────────────────────────┴────────────────────────────────────────────────┴──────────────┘
+┌────────────────────────┬───────────────────────────────────────────────────────────────┐
+│ Library         [+] ⋯  │ Varn Ashgrove                                             ⋯  │
+│ ▾ Characters           │                                                               │
+│   ▾ Allies             │   class Rogue   level 5   status wounded                      │
+│     Varn Ashgrove   ●  │                                                               │
+│     Mira Vance         │   Varn runs the docks out of a rented room above the          │
+│   ▸ Rivals             │   Gullet. He owes the Thieves' Guild  900  crowns.            │
+│ ▸ Places               │                                                               │
+│ ▸ Factions             ├───────────────────────────────────────────────────────────────┤
+│                        │ Fields                                                    ⋯  │
+│                        │ class Rogue · level 5 · status wounded · debt → Mira Vance    │
+└────────────────────────┴───────────────────────────────────────────────────────────────┘
 ```
 
-Three panels: the **tree**, the **sheet** (body editor), **fields**. The fields panel is separate
-from the sheet panel on purpose: it is the structured half, the part the AI reads first and the
-part Slice 4's components attach to. It can be hidden or docked under the body by anyone who
-prefers that.
+Three panels: the **tree**, the **sheet** (body editor), **fields**.
+
+Fields are typed inline, in the flow of writing, and stored in a map — `sheets.md` owns that
+model. The fields panel is therefore not "the structured half" but **the index**: every field on
+the sheet, including ones never placed in the body, and the place to see a field's owner when it
+is borrowed from another sheet.
+
+It sits **above or below the body, not beside it**. Fields are part of the document; reading them
+across a vertical gutter fights that. It is still a panel, so it can be hidden or moved by anyone
+who disagrees.
+
+A sheet has four presentations — rendered, rendered with the field index, raw, and the exact
+string sent to the model. The fourth is a Slice 5 panel. All four are specified in `sheets.md`.
 
 ### The name
 
@@ -143,26 +157,20 @@ Two lists in `campaign-index`: `folders: [{ id, title, parentId, order }]` and
 one document each, as `ARCHITECTURE.md` already says. Move, rename and archive are one operation
 set that takes either kind, and the AI's `library.tree` returns both, tagged.
 
-### Not HTML, not Markdown: a tree with two projections
+### Not HTML, not Markdown
 
-The brief floats HTML storage with a serializer for the AI. The roadmap already answers this
-and the answer is better than either: Slice 1 binds **ProseMirror to Automerge** and Slice 2 says
-Markdown export is *a representation, never storage*. The stored thing is a block tree.
-
-- **Editor** renders the tree to HTML. Sanitization is a rendering concern, not a storage one; an
-  HTML store would make every read path an XSS boundary.
-- **AI** reads the tree through the compact serializer below. No parsing of markup, no
-  guessing at structure.
-- **CRDT** merges typed nodes, not characters inside tags. Two devices editing one paragraph
-  merge as a paragraph.
+The stored thing is a block tree. Markdown and HTML are outputs, never storage. The full argument
+— including why a permissive format is *not* where extensibility comes from, and the preservation
+contract the tree gets for free — moved to `sheets.md` on Sep 11.
 
 "Apps" — user-authored JS pages — are Slice 15 plugin surfaces in sandboxed iframes, not a sheet
-type. They can be *pinned* into the library tree as entries later; they are not sheets.
+type. They can be *pinned* into the library tree as entries later; they are not sheets. A sheet
+that is not document-shaped is answered by a sheet-level `view`, not by a second sheet type.
 
 Slice 1's spike (ProseMirror + Automerge, doc size after 1k edits) is the bet everything here
-rests on. It ran on Sep 09, 2026 and holds — findings inline on the roadmap item. The one
-untested part is the schema for tables, images and mentions, which the basic adapter does not
-cover; Slice 1 writes that adapter first.
+rests on. It ran on Sep 09, 2026 and holds — findings inline on the roadmap item. The untested
+part is the custom adapter: tables, images, mentions, and the `field` and `embed` nodes the basic
+adapter does not cover. Slice 1 writes that adapter first.
 
 ## Settings
 
@@ -181,51 +189,19 @@ Keys stay in localStorage as `ARCHITECTURE.md` requires.
 
 ## What the AI sees
 
-This is what the library is *for*. Two rules, and the second is the one that matters:
+Moved to `ai-context.md` on Sep 11, 2026, and extended there: the four retrieval layers, the
+on-stage block, layered reads for wide sheets, the `Title [id]` convention, and why tool traffic
+must die with the turn.
+
+Two rules survive as the reason the library exists at all, and the second is the one that matters:
 
 1. **Tool definitions are context.** Every schema is sent on every request, ahead of the system
    prompt in cache order. Their count must not depend on how much content a campaign has.
-2. **Content is never context by default.** It is fetched through tools, compact, capped, on
-   demand.
+2. **Content is never context by default.** It is fetched through tools — compact, capped, on
+   demand — or placed deliberately by the app.
 
-### The compact sheet
-
-A candidate. Phase 0's acceptance test — hand-write the target for three real sheets — has not
-been done and should be done *against* this before Slice 8 builds it.
-
-```
-# Varn Ashgrove  [s_k3f]  Characters/Allies
-class: Rogue · level: 5 · status: alive · faction: [[Thieves' Guild|s_9qa]]
----
-Body as compact Markdown. Headings, lists and pipe tables survive; emphasis inside prose
-survives; empty formatting, alignment and images drop to (image: alt). A mention is
-[[Title|s_id]] so the model can follow it with one call.
-```
-
-Header first because it is cheapest and most useful: id, path, fields, refs, one line each. Body last because it is largest and often unnecessary: `read` takes `body: "none" | "summary"
-| "full"`. Ids are short and stable so the model can hold several in working memory. Every string
-that came from a sheet is untrusted — Slice 8's prompt hygiene delimits it.
-
-### The tools
-
-Slice 8 defines three. Slice 9 adds one. There is no fourth read tool and there is no tool per
-component: components are *data inside* `read`'s answer, which is what "compact AI view driven by
-attached components, degrading cleanly for untyped sheets" means.
-
-| Tool | Input | Output | Why it exists |
-| --- | --- | --- | --- |
-| `library.tree` | `root?`, `depth = 1` | `[{ id, kind, title }]` | Orientation. Cheap. Folders and sheets, tagged, so the model sees the shape before searching. |
-| `library.search` | `q`, `limit = 8` | `[{ id, title, path, snippet }]` | Titles and fields now; the PGlite index in Slice 6/8. |
-| `library.read` | `ids[]`, `body = "full"` | compact sheets | Batched: three characters is one call, not three round trips. |
-| `library.propose` | `ops[]` | `[{ accepted, reason? }]` | Slice 9. One tool for every operation type; the write pipeline validates each. |
-
-Names are short and namespaced; descriptions terse; results capped by `limit` and snippet length;
-every id echoed back so the model can chain calls. Zod once, in `packages/schema`: the AI SDK's
-`tool({ inputSchema })` takes it directly, so the contract and the tool definition are one shape.
-
-What the narrator gets **without asking** is a tuning question for Slice 8, not a design one:
-plausibly the sheets mentioned in the last few entries, in compact form, capped. It cuts the
-common case to zero round trips and is worth measuring, not assuming.
+Phase 0's acceptance test — hand-write the compact form for three real sheets — is still not done
+and should be done *against* `ai-context.md` before Slice 8 builds it.
 
 ## Models that cannot do this
 
@@ -249,17 +225,25 @@ silently fail every tool call.
 2. **Tools flag** in the catalogue and the picker. Small; alongside 1.
 3. **Library tab.** Done Sep 09, 2026: tree, create/rename/archive, fields panel, ProseMirror body
    from day one since the spike passed. Move-to-folder and reorder are in the kernel, not yet the UI.
-4. **Serializer and read tools** (Slice 8), after the three-sheet acceptance test.
+4. **Custom schema adapter** (Slice 1): tables, images, mentions, and the `field` and `embed`
+   nodes. Inline fields, transclusion and the field index move with it (`sheets.md`).
+5. **Serializer and read tools** (Slice 8), after the three-sheet acceptance test
+   (`ai-context.md`).
 
-## Proposed roadmap edits
+## Roadmap edits
 
-- Phase 0 decisions: record *Story* (tab 1), *Library* (tab 2) and *folders as their own
-  entity*, all Sep 09, 2026. Mark *One or many AI conversations per campaign* decided: many.
-- Slice 3: rename to *Story: conversations, meta channel, events*; add the conversations panel;
-  note `timeline:<id>` → `conversation:<id>`.
-- Slice 5: the panel engine builds on panels that already exist; add *tab state* as the contract
+Applied to `ROADMAP.md` on Sep 09 and Sep 11, 2026. Kept here as the record of what this file
+changed.
+
+- Phase 0 decisions: *Story* (tab 1), *Library* (tab 2), *folders as their own entity*, and *many
+  conversations per campaign* — Sep 09.
+- Slice 3: the conversations panel; `timeline:<id>` becomes `conversation:<id>`.
+- Slice 5: the panel engine builds on panels that already exist; *tab state* is the contract
   between panels.
-- Slice 7: add *catalogue carries tool support; picker disables models without it*.
-- Slice 8: replace "Tools: read sheet, query index, list timeline" with the three named above.
-- `ARCHITECTURE.md`: *panel* and *tab* join the vocabulary; `campaign-index` holds
-  conversations, folders, sheets and instructions.
+- Slice 7: catalogue carries tool support; the picker disables models without it.
+- Slice 8: the four named tools replace "read sheet, query index, list timeline".
+- `ARCHITECTURE.md`: *panel* and *tab* join the vocabulary; `campaign-index` holds conversations,
+  folders, sheets and instructions.
+
+Still pending, tracked in the two documents that own them now: the sheet model edits in
+`sheets.md`, the retrieval and context edits in `ai-context.md`.

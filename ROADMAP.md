@@ -2,6 +2,7 @@
 
 > Started: September 06, 2026
 > `PRODUCT.md` is the truth. This file tracks how we get there. `docs/stack.md` and `docs/stack-review.md` are current bets, not decisions.
+> Reference documents, each owning one thing: `docs/workspace.md` (tabs and panels), `docs/sheets.md` (the sheet: body, fields, views, ceiling), `docs/ai-context.md` (what the model sees and how it finds things).
 > **(bet)** = rests on a tentative technology choice, may be redone. **(decide)** = open question, not work. **(kernel)** = core code that gets pulled into existence by the slice that first needs it.
 > Phases are ordering, not deadlines. Move items freely.
 
@@ -18,7 +19,7 @@
 
 ### Decisions (decide)
 - [x] Can a campaign have more than one human? **Decided Sep 06, 2026: v1 is single-user, multi-device.** Shared campaigns are planned but hard, see Later. Sync authorization is doc to campaign to owner; keep a membership table anyway so sharing can be added without a migration.
-- [ ] Sheet model: free body + free fields + optional components (current lean) vs mandatory types. Confirm.
+- [x] Sheet model: free body + free fields + optional components vs mandatory types. **Decided Sep 11, 2026: the current lean, confirmed.** A sheet is body + fields + view, and anything unrecognised is kept. Fields are a map with **inline bindings**, not inline text: `::` writes a field, `{{ }}` reads one, `[[ ]]` links a sheet, and the syntax is an input method that never reaches storage. A field may be owned by another sheet (transclusion), and the write pipeline enforces that ownership. Full argument and the now-decisions list: `docs/sheets.md`.
 - [ ] Plugin network access: none, manifest allowlist via CSP, or routed through a host proxy.
 - [x] One or many AI conversations per campaign. **Decided Sep 09, 2026: many.** The index lists them; each has its own entries document. Built in Slice 0.5. Tab names (*Story*, *Library*) and folders as their own entity were decided the same day: `docs/workspace.md`.
 - [ ] AI sources for v1: BYOK keys (PRODUCT.md) vs OpenRouter-first vs both. Where keys live (device only, server encrypted, or both as modes).
@@ -29,11 +30,12 @@
 
 ### Playable spikes (throwaway, inside a scratch app shell so you can poke them)
 - [x] Automerge 3 + ProseMirror: edit a sheet with body + fields, sync two tabs, measure doc size after 1k edits. **(bet) Ran Sep 09, 2026 (`apps/spike-sheet`): holds.** Rich text, marks and fields sync both ways between tabs and survive a reload. 1,000 editor edits: ~11 B each, 0.6 → 11.7 KB; 1,000 rewrites of one field: ~8 B each, → 19.9 KB; 2,053 changes, ~5 B per body char. Findings that change the plan: (1) `@automerge/prosemirror` must be *pre-bundled with* the ProseMirror packages and `resolve.dedupe`d in Vite — served raw it loads a second `prosemirror-model` and every edit throws; carry that into `apps/web/vite.config.ts` for Slice 1. (2) `handle.change` costs 7–16 ms per call in a tight loop through automerge-repo, so imports and AI-proposed batches go in one change, never one per field. (3) The basic schema adapter covers paragraphs, headings, lists, quotes, code, an image block and link/em/strong/code marks. Tables are the one gap, and mentions can ride the link mark. The binding is 0.2.0 and says so.
+- [ ] Custom `SchemaAdapter`: an inline embed node carrying attributes, round-tripped through Automerge and synced between two tabs, with one field edited from the panel and from its chip at the same time. Acceptance test includes opening a document containing an **unknown block type** with an adapter that lacks it, editing elsewhere, saving, and confirming the unknown block survives — the preservation contract, verified rather than assumed. Also confirms whether nested attribute state merges or is replaced wholesale, which decides the `pluginState` shape (`docs/sheets.md`). **(bet)**
 - [ ] QuickJS in Worker in sandboxed cross-origin iframe: run untrusted code, enforce CPU + memory limits, kill it, call a host capability. **(bet)**
 - [ ] Panel layout with plugin iframes in a fixed top layer: drag panels, confirm iframes never reload. **(bet)**
 - [ ] Reactive projection: Solid stores vs TanStack DB over the same Automerge change stream, with one join (timeline x sheets). Pick one. **(bet)**
 - [ ] PGlite + pgvector as a lazy local index: build from Automerge, run a vector + full-text query, delete and rebuild. Test on Safari. **(bet)**
-- [ ] Compact AI serialization: hand-write the target format for three real sheets from your own campaigns. This is the acceptance test for Slice 4.
+- [ ] Compact AI serialization: hand-write the target format for three real sheets from your own campaigns, *against* `docs/ai-context.md`. This is the acceptance test for Slice 4. Include one sheet with a borrowed field and one with sixty attributes, so the layered read is tested and not assumed.
 - [ ] Storage eviction: confirm persistence request behaviour and iOS Safari eviction with a real installed PWA.
 - [ ] Direct browser-to-provider AI call with a device-held key (OpenRouter and at least one direct provider). Confirms Phase 3 needs no server.
 
@@ -97,9 +99,15 @@ Pulled forward from Slices 3 and 5 so the library has somewhere to land. Design:
 ### Slice 1 - A sheet you can write
 - [x] ProseMirror bound to Automerge; one sheet document persisted to IndexedDB **(bet)** — built Sep 09, 2026 as the Library tab: tree panel (folders as their own entity, create/rename/archive/restore, remove empty folders), sheet panel (title, ProseMirror body, block commands in the panel `⋯`), fields panel. `@automerge/prosemirror` pre-bundled with ProseMirror and deduped in Vite, as the spike found. Move-to-folder and reorder exist in the kernel, not yet in the UI
 - [x] Free-form fields panel (key: value) on every sheet (Sep 09, 2026; values are text diffs, so two devices merge)
-- [ ] References and mentions between sheets with stable ids; tables; images from local assets. The basic schema adapter already carries an image block and a `link` mark; a mention can ride the link mark with a `sheet:` href. Tables are the open gap
+- [ ] Custom `SchemaAdapter`, written first: tables, images, mentions, plus the `field` and `embed` nodes. Designating the `unknownBlock` is a recorded decision, not a detail; `unknownAttrs` are never stripped
+- [ ] Inline fields: `::` writes, `{{ }}` reads, `#` opens an autocomplete over sheet titles. Input rules consume the syntax at typing time, like `## ` for a heading — nothing downstream parses a body. Chips render the value and edit in place
+- [ ] The fields panel moves **above or below** the body (it is `w-72` on the right today) and is reworded from *the structured half* to **the index**: every field, including ones never placed in the body
+- [ ] References and mentions between sheets with stable ids; tables; images from local assets. The basic schema adapter already carries an image block and a `link` mark. Tables are the open gap
+- [ ] Transclusion: `{{Title|id.key}}` shows another sheet's field, live. One source of truth; the owner is visible in the index and enforced by the write pipeline in Slice 9
+- [ ] Views 1 and 2 of a sheet (rendered, rendered + index). View 3 (raw) ships **read-only**: an editable raw view needs a parser that is the exact inverse of the serializer, and a lossy round trip destroys work silently. View 4 (context) is Slice 5
 - [ ] Sanitized rendering on every content path; external images blocked by default. Pasted `<img>` is stripped for now, until images come from local assets
-- [ ] (kernel) stable ids; Sheet shape: body, fields, refs, meta. Body and fields done Sep 09, 2026; refs and meta pending
+- [ ] (kernel) stable ids; Sheet shape: body, fields, refs, view, meta. Body and fields done Sep 09, 2026; refs, view and meta pending
+- [ ] (kernel) now-decisions from `docs/sheets.md`, all of them a type or a name and all expensive the day after the first document is written: namespaced node type names, a `v` attribute on plugin nodes, a fallback text slot in the node spec, a `pluginState` side-map on the sheet, `view` on `SheetSummary`, and a reserved `hidden` node for spoiler text
 - [x] (kernel) `sheet:<id>` Automerge document shape; `Folder` and `SheetSummary` records in `campaign-index` (Sep 09, 2026)
 - [ ] **Play:** rewrite three characters and one location from a past campaign. Notice what the editor cannot express.
 
@@ -108,7 +116,7 @@ Pulled forward from Slices 3 and 5 so the library has somewhere to land. Design:
 - [ ] Storage persistence request; loud durability warning on local campaign creation
 - [ ] Automatic file backups; "last backed up" indicator
 - [ ] Campaign bundle export and import (documents + assets + manifest)
-- [ ] Markdown export of a sheet as a representation, never storage
+- [ ] Markdown export of a sheet as a representation, never storage. Placed fields export as `key:: value`, unplaced ones as frontmatter, so the export opens in Obsidian with its metadata intact
 - [ ] (kernel) `campaign-index` document; bundle format
 - [ ] **Play:** export, wipe browser storage, import. Nothing lost. Then open the export in Obsidian and see what survives.
 
@@ -121,7 +129,9 @@ Naming: the tab is *Story* and each thread a *conversation* (Slice 0.5). *Timeli
 - [ ] **Play:** transcribe one past session into chat and timeline. Does the narrative/meta split feel right? Does the timeline need branching?
 
 ### Slice 4 - Structure when you want it
-- [ ] Components: define, attach several to one sheet, component-driven forms, validation only for claimed fields
+- [ ] Components: define, attach several to one sheet, component-driven forms, validation only for claimed fields. **Plugin-definable, not a fixed host list** — that is what makes a field type an extension point rather than a menu
+- [ ] Merge strategy follows the claimed type: last-write-wins for scalars and enums, text diff for prose. `setSheetField` text-diffs everything today, so two devices setting `hp` to 15 and 18 can merge into `1518`. Unclaimed keys keep the text diff
+- [ ] A component declares which of its claimed keys are **summary fields**, so a sixty-attribute sheet reads as six until asked (`docs/ai-context.md`)
 - [ ] Undo/redo across body, fields and timeline
 - [ ] (kernel) typed operation set: set field, insert/replace/delete block, add/remove reference, create/archive sheet, attach/detach component, timeline and chat ops
 - [ ] (kernel) write pipeline: validation, policy stub, transaction with provenance; inverse operations grouped by intent; event stream out
@@ -132,6 +142,7 @@ Naming: the tab is *Story* and each thread a *conversation* (Slice 0.5). *Timeli
 ### Slice 5 - Your layout
 - [ ] Own panel engine: split, dock, tabs, saved layouts per campaign; builds on Slice 0.5's panels and tab state **(bet)**
 - [ ] Fixed top-layer surface wired now, empty, for future plugin iframes
+- [ ] View 4 of a sheet: a panel printing the exact string sent to the model. Read-only, and it must agree character for character with view 3 (raw), so there is one syntax to learn rather than two. Nearly free — the serializer exists for the tools anyway
 - [ ] Virtualized chat and timeline lists; command palette; context menus; keyboard model
 - [ ] **Play:** build the layout you actually want for a session. Drag things around while a sheet is open.
 
@@ -159,14 +170,21 @@ Moved ahead of cloud: this is where playing starts for real, and none of it need
 - [ ] **Play:** one full session, chat only. The AI sees nothing but the conversation.
 
 ### Slice 8 - The AI reads
-- [ ] Tools: `library.tree`, `library.search`, `library.read`; typed once in the schema package, the AI SDK takes the Zod directly (`docs/workspace.md`)
+- [ ] Tools: `library_tree`, `library_search`, `library_read`; typed once in the schema package, the AI SDK takes the Zod directly (`docs/ai-context.md`). **Underscores, not dots** — Anthropic and OpenAI both constrain names to `^[a-zA-Z0-9_-]{1,64}$`. Confirm against a live provider before writing the rest
+- [ ] The description carries the return contract: there is no output schema in the wire format, so a terse description costs the model a discovery call
+- [ ] Every id emitted to the model carries its title — `Title [id]` in prose, `Title|id` inside delimiters. Never a bare id, in results or in rejection reasons
+- [ ] `library_read` takes `fields: "summary" | "all"` as well as `body: "none" | "summary" | "full"`, so a wide sheet is cheap to glance at
+- [ ] The four retrieval layers, cheapest first: references already in the text, resolved in ordinary code before the request is built; the on-stage block; activation keys, scoped to lore nothing would ever link to; search and embeddings last
+- [ ] On-stage block in the turn builder: headers of sheets recently in play, no bodies, hard capped. Design, not a tuning afterthought — it is what makes the common turn need zero tool calls
+- [ ] Tool traffic dies with the turn. Messages are rebuilt from narrative entries, so calls and results never reach the next turn; a test asserts it
 - [ ] Strategic sheet querying: retrieval over the PGlite index, chunked by block, hybrid search; client-side embeddings **(bet)**
 - [ ] Prompt hygiene: untrusted content delimited, tool results parsed defensively
 - [ ] **Play:** one session where the AI answers from sheets it looked up itself. Notice what it should have looked up and did not.
 
 ### Slice 9 - The AI writes
 - [ ] Context model produces a typed plan; executor model emits operations through the pipeline
-- [ ] `library.propose`: one write tool for every operation type; the pipeline validates each
+- [ ] `library_propose`: one write tool for every operation type; the pipeline validates each. Keep the core operation set to six or eight — the discipline is keeping it small, not hiding it behind a discovery tool. Plugin operations are namespaced and included only for plugins enabled on that campaign, so size tracks enabled plugins rather than content
+- [ ] Rejections name the thing and the fix, because a model reads them and tries again: `"debt belongs to Mira Vance [s_2pv]; propose there"`. A write aimed at a borrowed field is refused — the first place the deterministic policy earns its keep
 - [ ] Approval tiers for write tools; "undo this AI turn"; provenance on every AI change
 - [ ] Deterministic policy in the pipeline is real now, not a stub
 - [ ] **Play:** one session where the AI updates sheets and timeline. Inspect every change. Undo at least one.

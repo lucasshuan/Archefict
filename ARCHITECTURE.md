@@ -2,6 +2,7 @@
 
 > September 09, 2026. The rules we follow now. Short on purpose. Change it when the code changes.
 > Product truth: `PRODUCT.md`. Bets and why: `docs/stack.md`. Order of work: `ROADMAP.md`.
+> Reference, one thing each: `docs/workspace.md` (tabs and panels), `docs/sheets.md` (the sheet), `docs/ai-context.md` (what the model sees).
 
 ## Monorepo
 
@@ -23,7 +24,9 @@ packages/config    Shared tsconfig presets.
 
 ## Data, both apps obey
 
-- Automerge is canonical. One document per thing: `campaign-index` (name, instructions, conversations, folders, sheets), `conversation:<id>` (one conversation's timeline of entries), later `sheet:<id>`. Never one document per campaign.
+- Automerge is canonical. One document per thing: `campaign-index` (name, instructions, conversations, folders, sheets), `conversation:<id>` (one conversation's timeline of entries), `sheet:<id>` (one sheet's body, fields and plugin state). Never one document per campaign.
+- A sheet is a body (block tree), a map of fields, and a view that draws it. Fields are typed inline and stored in the map; the `::` and `{{ }}` syntax is an input method, consumed at typing time, never parsed back out of a body. Details: `docs/sheets.md`.
+- Anything a schema does not recognise is kept, not dropped: unknown blocks, attributes and marks survive a round-trip. This is what lets a plugin extend a sheet without a client that lacks it destroying the result.
 - Every write is a function in `packages/crdt`, then `flush()`. Nothing is durable until flush resolves.
 - Mutations return the action they performed. Undo applies the inverse as an ordinary change, so it merges and syncs; document snapshots are never used.
 - Local-only state (drafts, settings, campaign registry) is localStorage under `archefict:*`. Never in a CRDT.
@@ -42,7 +45,7 @@ src/campaign/      Automerge glue: repo, library (registry), store, conversation
 src/components/    UI. Props in, callbacks out. No fetching, no storage.
 src/settings/      store + page. Pattern for a feature that owns state and UI
 src/workspace/     the tabs of a campaign and the panels inside them (docs/workspace.md)
-src/library/       the Library tab: tree, sheet editor (ProseMirror over Automerge), fields
+src/library/       the Library tab: tree, sheet editor (ProseMirror over Automerge), field index
 src/<feature>/     later: plugins/
 ```
 
@@ -57,6 +60,7 @@ src/<feature>/     later: plugins/
 - Text on a colored background uses that color's `-fg` token (`text-accent-fg`, `text-danger-fg`). No unlayered CSS in `app.css`: it outranks every utility.
 - Page content sits in one column, `max-w-page`, whose width is the `--page-width` token. No page picks its own width.
 - Three foreground tones: `fg` for content, `fg-muted` for labels and chrome, `fg-subtle` for supporting text. A section heading outranks its labels by size and weight (15px semibold, `fg`), never by colour. The accent means "selected" or "act here" — the selected tab, the active sidebar item, the primary button, a highlighted row — and nothing decorative. Explanations belong in an info badge tooltip beside the label, not printed under the control; only text describing the chosen value stays on the page.
+- Tool definitions are context and are sent on every request; campaign content is not, and is fetched through tools or placed deliberately by the turn builder. Tool calls and results die with the turn: messages are rebuilt from narrative entries. Details: `docs/ai-context.md`.
 - Every API call may fail. The app works with the server down. Same-origin `/api`, proxied by Vite in dev.
 - The provider key stays on the device. It is never sent to our API.
 - Vite: Automerge is excluded from pre-bundling; dependencies reached only through linked packages are listed in `optimizeDeps.include`. `@automerge/prosemirror` is the opposite case — pre-bundled with the ProseMirror packages and `resolve.dedupe`d — or the editor loads two `prosemirror-model`s and every edit throws.
