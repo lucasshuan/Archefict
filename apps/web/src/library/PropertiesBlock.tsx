@@ -125,7 +125,7 @@ export function PropertiesBlock(props: {
           fallback={
             <button
               type="button"
-              class="col-span-2 grid grid-cols-[18px_1fr] items-center gap-2 rounded-lg py-1 text-left text-[13px] text-fg-subtle hover:bg-surface hover:text-fg-muted"
+              class="col-span-2 grid grid-cols-[18px_1fr] items-center gap-2 rounded-lg py-1 text-left text-[13px] text-fg-subtle hover:bg-surface-raised/60 hover:text-fg-muted"
               onClick={() => setAdding(true)}
             >
               <Plus size={14} aria-hidden="true" class="justify-self-center" />
@@ -211,7 +211,7 @@ function FieldRow(props: {
     explicit() ? "set here" : props.claim ? `from ${props.claim.title}` : "inferred";
 
   return (
-    <div class="group grid min-h-7.5 grid-cols-[18px_8.5rem_minmax(0,1fr)_18px] items-center gap-2 rounded-lg px-1.5 hover:bg-surface">
+    <div class="group grid min-h-7.5 grid-cols-[18px_8.5rem_minmax(0,1fr)_18px] items-center gap-2 rounded-lg px-1.5 hover:bg-surface-raised/60">
       <button
         ref={iconButton}
         type="button"

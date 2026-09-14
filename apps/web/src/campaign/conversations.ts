@@ -28,8 +28,12 @@ export type ConversationStore = {
   select: (id: string) => void;
   /** Adds a conversation and opens it. */
   create: () => Promise<void>;
+  /** Copies a conversation and its entries, beside the original, and opens the copy. */
+  duplicate: (id: string) => Promise<void>;
   rename: (id: string, title: string) => Promise<void>;
   archive: (id: string) => Promise<void>;
+  /** Removes conversations and their timelines for good. Nothing brings them back. */
+  deleteConversations: (ids: readonly string[]) => Promise<void>;
   /** Brings an archived conversation back and opens it. */
   restore: (id: string) => Promise<void>;
   toggleList: () => void;
@@ -82,9 +86,19 @@ export function createConversationStore(
       const created = await handles.createConversation(NEW_CONVERSATION_TITLE);
       select(created.id);
     },
+    async duplicate(id) {
+      const copy = await handles.duplicateConversation(id);
+      select(copy.id);
+    },
     async rename(id, title) {
       renameConversation(handles.index, id, title);
       await handles.flush();
+    },
+    async deleteConversations(ids) {
+      await handles.deleteConversations(ids);
+      // Only archived ones are ever offered, so the open list — and `active` — never empties
+      // here. A remembered id that was among them falls back on its own.
+      if (ids.includes(activeId() ?? "")) persist();
     },
     async archive(id) {
       archiveConversation(handles.index, id);

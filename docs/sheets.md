@@ -45,9 +45,29 @@ has nowhere to live except inside the string.
 the moment of typing and never appears in storage, exactly as `## ` becomes a heading rather than
 staying the characters `## `. Nothing downstream parses a body with a regex, ever.
 
-`#` is the authoring trigger: typing `#Mira` opens an inline autocomplete over sheet titles and
-inserts a reference; `#Mira.` offers her fields and inserts a transclusion. One trigger, both
+`@` is the authoring trigger: typing `@Mira` opens an inline autocomplete over sheet titles and
+inserts a reference; `@Mira.` offers her fields and inserts a transclusion. One trigger, both
 results.
+
+It was `#` until Sep 14, 2026, and `#` is Markdown's heading. The two never collided in practice —
+`# ` has a space and `#Mira` does not — but the popup had to refuse Enter on an empty query to
+keep `#` alone a heading, which is a rule nobody can see. `@` collides with nothing, reads as
+*mention* in every other editor, and needs no such rule.
+
+### `/` is the way in
+
+A `/` at the start of a block or after whitespace opens the **command menu** (Sep 14, 2026):
+what the block can become — text, headings, lists, quote, code block, table — and the two chips,
+each line naming the syntax that does the same thing. Notion, Fibery and LegendKeeper all put it
+there and a writer arrives already knowing it.
+
+The menu and the toolbar are one list of commands (`library/commands.ts`), so a heading cannot mean two
+things depending on which way it was reached. They differ in one way, on purpose: a toolbar button
+shows its own state and a lit one clears back to a paragraph, while a menu line that was searched
+for and chosen means *make it this*.
+
+No divider. `horizontal_rule` is in the schema but has no `automerge` mapping, so the binding has
+nothing to store one as; the menu offers it the day the node is mapped.
 
 ### Why the value lives in the map
 
@@ -238,7 +258,7 @@ Default-deny, as `stack.md` requires.
 ## Built, and what building it found
 
 Sep 13, 2026 (`apps/web/src/library/`): the custom adapter (`schema.ts`), tables, the field and
-reference chips (`chips.tsx`), the typed syntax (`field-rules.ts`), the `#` / `{{` popups
+reference chips (`chips.tsx`), the typed syntax (`field-rules.ts`), the `/` / `@` / `{{` popups
 (`autocomplete.tsx`), the index-above-body and raw views (`view-store.ts`, `PropertiesBlock.tsx`,
 `serialize.ts`), the toolbar. The fields panel is gone. Views 1–3 exist; raw is editable through
 the inverse parser; view 4 is Slice 5.
@@ -344,7 +364,7 @@ views, custom operations.
 - Phase 0 spikes: add *inline embed node with attributes through a custom `SchemaAdapter`*. Its
   acceptance test includes opening a document containing an unknown block type with an adapter that
   lacks it, editing elsewhere, saving, and confirming the unknown block survives.
-- Slice 1: the adapter gains the `field` and `embed` nodes; add the `::`, `{{ }}` and `#` input
+- Slice 1: the adapter gains the `field` and `embed` nodes; add the `::`, `{{ }}` and `@` input
   rules and the chip renderer; the fields panel moves above or below the body and is reworded from
   *the structured half* to *the index*; transclusion and ownership land with references.
 - Slice 1 (kernel): reserve `view` on `SheetSummary` and a `hidden` node name.

@@ -14,6 +14,8 @@ export type CampaignSummary = {
   url: AutomergeUrl;
   name: string;
   createdAt: number;
+  /** The campaign's chosen picture. Absent: its card draws the placeholder. */
+  cover?: string | undefined;
 };
 
 export type Library = {
@@ -58,12 +60,32 @@ export async function openLibrary(repo: Repo): Promise<Library> {
   }
   writeLibrary(record);
 
-  const summaries = (): readonly CampaignSummary[] =>
-    record.campaigns.map((entry) => ({
-      url: entry.indexUrl as AutomergeUrl,
-      name: opened.get(entry.indexUrl)?.index.doc().name ?? DEFAULT_NAME,
-      createdAt: entry.createdAt,
-    }));
+  // A campaign whose summary has not changed keeps the same object. The sidebar renders the
+  // list with `For`, which tells items apart by identity: hand it a fresh object for every
+  // campaign on every commit and it rebuilds every card, so selecting one remounts them all
+  // and the card's transitions never run — a rebuilt element is born in its final state.
+  let previous: readonly CampaignSummary[] = [];
+  const summaries = (): readonly CampaignSummary[] => {
+    const known = new Map(previous.map((summary) => [summary.url, summary]));
+    const next = record.campaigns.map((entry): CampaignSummary => {
+      const doc = opened.get(entry.indexUrl)?.index.doc();
+      const summary: CampaignSummary = {
+        url: entry.indexUrl as AutomergeUrl,
+        name: doc?.name ?? DEFAULT_NAME,
+        createdAt: entry.createdAt,
+        cover: doc?.cover,
+      };
+      const old = known.get(summary.url);
+      return old &&
+        old.name === summary.name &&
+        old.createdAt === summary.createdAt &&
+        old.cover === summary.cover
+        ? old
+        : summary;
+    });
+    previous = next;
+    return next;
+  };
 
   const [campaigns, setCampaigns] = createSignal<readonly CampaignSummary[]>(summaries());
   const [active, setActive] = createSignal<CampaignHandles | null>(

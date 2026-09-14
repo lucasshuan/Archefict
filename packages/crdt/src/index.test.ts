@@ -5,6 +5,7 @@ import {
   appendEntry,
   archiveConversation,
   archiveSheet,
+  bySiblingOrder,
   type CampaignIndexDoc,
   conversationsOf,
   createCampaign,
@@ -279,6 +280,165 @@ describe("library", () => {
     expect(sheetsOf(index)[0]?.archivedAt).toBe(archivedAt);
     restoreSheet(index, sheet.id);
     expect(sheetsOf(index)[0]?.archivedAt).toBeUndefined();
+  });
+
+  it("reorders sheets and moves them in and out of folders", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Reorder");
+    const { index } = handles;
+    const places = createFolder(index, "Places", null);
+    const docks = await handles.createSheet("Docks", null);
+    const gullet = await handles.createSheet("Gullet", null);
+    const lantern = await handles.createSheet("Lantern", null);
+    /** The root's sheets as the tree reads them. */
+    const root = () =>
+      sheetsOf(index)
+        .filter((sheet) => sheet.folderId === null)
+        .sort(bySiblingOrder)
+        .map((sheet) => sheet.title);
+    expect(root()).toEqual(["Docks", "Gullet", "Lantern"]);
+
+    // Reordering inside one folder: beside a sibling, on either side.
+    moveSheet(index, lantern.id, null, { id: docks.id, side: "before" });
+    expect(root()).toEqual(["Lantern", "Docks", "Gullet"]);
+    moveSheet(index, lantern.id, null, { id: docks.id, side: "after" });
+    expect(root()).toEqual(["Docks", "Lantern", "Gullet"]);
+
+    // Already there: nothing is written, so the heads do not move.
+    const settled = index.doc();
+    moveSheet(index, lantern.id, null, { id: docks.id, side: "after" });
+    moveSheet(index, gullet.id, null, { id: lantern.id, side: "after" });
+    moveSheet(index, gullet.id, null);
+    expect(index.doc()).toBe(settled);
+
+    // Into a folder, at a named position, and the slots there stay dense.
+    moveSheet(index, docks.id, places.id);
+    moveSheet(index, gullet.id, places.id, { id: docks.id, side: "before" });
+    expect(
+      sheetsOf(index)
+        .filter((sheet) => sheet.folderId === places.id)
+        .sort(bySiblingOrder)
+        .map((sheet) => [sheet.title, sheet.order]),
+    ).toEqual([
+      ["Gullet", 0],
+      ["Docks", 1],
+    ]);
+    expect(root()).toEqual(["Lantern"]);
+
+    // Back out to the root, beside the sheet left there.
+    moveSheet(index, docks.id, null, { id: lantern.id, side: "before" });
+    expect(root()).toEqual(["Docks", "Lantern"]);
+  });
+
+  it("ignores a move that names nothing, and one onto the sheet itself", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Bad moves");
+    const { index } = handles;
+    const sheet = await handles.createSheet("Varn", null);
+    const other = await handles.createSheet("Mira", null);
+    const before = index.doc();
+
+    moveSheet(index, "missing", null);
+    moveSheet(index, sheet.id, "no-such-folder");
+    moveSheet(index, sheet.id, null, { id: sheet.id, side: "before" });
+    expect(index.doc()).toBe(before);
+
+    // A neighbour in another folder names no position: the sheet goes last instead.
+    const folder = createFolder(index, "Characters", null);
+    moveSheet(index, other.id, folder.id);
+    moveSheet(index, sheet.id, folder.id, { id: "missing", side: "before" });
+    expect(
+      sheetsOf(index)
+        .filter((s) => s.folderId === folder.id)
+        .sort(bySiblingOrder)
+        .map((s) => s.title),
+    ).toEqual(["Mira", "Varn"]);
+  });
+
+  it("duplicates a sheet next to it, with its body, fields and models", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Copies");
+    const { index } = handles;
+    const model = await handles.createSheet("Statblock", null, { kind: "model" });
+    const varn = await handles.createSheet("Varn", null, { models: [model.id] });
+    const mira = await handles.createSheet("Mira", null);
+    const opened = await handles.openSheet(varn.id);
+    setSheetField(opened.doc, "level", "5");
+    setSheetFieldMeta(opened.doc, "level", { type: "number" });
+
+    const copy = await handles.duplicateSheet(varn.id);
+    expect(copy.title).toBe("Varn copy");
+    expect(copy.models).toEqual([model.id]);
+    // Beside the original, not at the end: Mira was after Varn and stays after the copy.
+    expect(
+      sheetsOf(index)
+        .filter((sheet) => sheet.folderId === null)
+        .sort(bySiblingOrder)
+        .map((sheet) => sheet.title),
+    ).toEqual(["Statblock", "Varn", "Varn copy", "Mira"]);
+
+    const copied = await handles.openSheet(copy.id);
+    expect(copied.doc.doc().fields).toEqual({ level: "5" });
+    expect(copied.doc.doc().meta?.["level"]?.type).toBe("number");
+    // Its own document: writing to the copy leaves the original alone.
+    setSheetField(copied.doc, "level", "6");
+    expect(opened.doc.doc().fields["level"]).toBe("5");
+
+    // A second copy does not take the same name.
+    expect((await handles.duplicateSheet(varn.id)).title).toBe("Varn copy 2");
+    expect(mira.id).not.toBe(copy.id);
+    await expect(handles.duplicateSheet("missing")).rejects.toThrow(/No sheet/);
+  });
+
+  it("duplicates a conversation and its entries", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Copies");
+    const [first] = conversationsOf(handles.index);
+    expect(first).toBeDefined();
+    if (!first) return;
+    const opened = await handles.openConversation(first.id);
+    appendEntry(
+      opened.timeline,
+      createEntry({ kind: "user", text: "I open the door.", provenance: { source: "user" } }),
+    );
+
+    const copy = await handles.duplicateConversation(first.id);
+    expect(copy.title).toBe(`${FIRST_CONVERSATION_TITLE} copy`);
+    expect(conversationsOf(handles.index).map((c) => c.title)).toEqual([
+      FIRST_CONVERSATION_TITLE,
+      `${FIRST_CONVERSATION_TITLE} copy`,
+    ]);
+    const copied = await handles.openConversation(copy.id);
+    expect(entriesOf(copied.timeline).map((entry) => entry.text)).toEqual(["I open the door."]);
+    appendEntry(
+      copied.timeline,
+      createEntry({ kind: "user", text: "And another.", provenance: { source: "user" } }),
+    );
+    expect(entriesOf(opened.timeline)).toHaveLength(1);
+    await expect(handles.duplicateConversation("missing")).rejects.toThrow(/No conversation/);
+  });
+
+  it("deletes sheets and conversations for good", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Deletions");
+    const { index } = handles;
+    const keep = await handles.createSheet("Keep", null);
+    const one = await handles.createSheet("One", null);
+    const two = await handles.createSheet("Two", null);
+
+    await handles.deleteSheets([one.id]);
+    expect(sheetsOf(index).map((sheet) => sheet.title)).toEqual(["Keep", "Two"]);
+    await handles.deleteSheets([keep.id, two.id, "missing"]);
+    expect(sheetsOf(index)).toEqual([]);
+    // Nothing to remove changes nothing.
+    await handles.deleteSheets([]);
+    await handles.deleteSheets(["missing"]);
+    expect(sheetsOf(index)).toEqual([]);
+
+    const extra = await handles.createConversation("Side quest");
+    await handles.deleteConversations([extra.id]);
+    expect(conversationsOf(index).map((c) => c.title)).toEqual([FIRST_CONVERSATION_TITLE]);
+    await expect(handles.openSheet(one.id)).rejects.toThrow(/No sheet/);
   });
 
   it("renames folders and removes them only once they are empty", async () => {

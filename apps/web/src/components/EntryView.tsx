@@ -171,7 +171,7 @@ function EditBox(props: {
       <div class="flex items-center justify-end gap-2 font-body text-xs not-italic">
         <button
           type="button"
-          class="inline-flex items-center gap-1 rounded-app bg-bg px-2 py-1 text-fg hover:opacity-80"
+          class="inline-flex items-center gap-1 rounded-app bg-surface-sunken px-2 py-1 text-fg hover:opacity-80"
           onClick={() => props.onCancel()}
         >
           <X size={14} aria-hidden="true" />

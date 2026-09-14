@@ -1,14 +1,23 @@
+import type { Schema } from "prosemirror-model";
 import { type EditorState, NodeSelection, Plugin, PluginKey } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { createSignal, For, Show } from "solid-js";
-import { render } from "solid-js/web";
+import { Dynamic, render } from "solid-js/web";
 import type { ChipContext } from "./chips.tsx";
+import { type SlashCommand, slashCommands } from "./commands.ts";
 
 /**
- * The `#` and `{{` popups (docs/sheets.md): `#` lists sheets and inserts a reference; `.` on
- * a highlighted sheet lists that sheet's fields instead; `{{` lists this sheet's own fields and
- * can create one. Enter or Tab takes the highlighted item, Escape puts the popup away until
- * the trigger is typed again.
+ * The three popups a sheet's body opens as you type (docs/sheets.md):
+ *
+ * - `/` lists what a block can become and what a chip can be — the same set the toolbar holds,
+ *   plus the two chips, reachable without leaving the keyboard.
+ * - `@` lists sheets and inserts a reference; `.` on a highlighted sheet lists that sheet's
+ *   fields instead, which is how a transclusion is written.
+ * - `{{` lists this sheet's own fields and can create one.
+ *
+ * Enter or Tab takes the highlighted item, Escape puts the popup away until the trigger is
+ * typed again. `/` and `@` only fire at the start of a block or after whitespace, so an email
+ * address and a path stay text.
  *
  * The plugin owns the state — where the trigger is, what has been typed since, which item is
  * lit — and re-derives it from the text before the caret on every change, so undo, remote
@@ -16,7 +25,10 @@ import type { ChipContext } from "./chips.tsx";
  * component rendered into a fixed element under the caret.
  */
 
-type Stage = { kind: "sheets" } | { kind: "fields"; sheet: string | null; title: string | null };
+type Stage =
+  | { kind: "commands" }
+  | { kind: "sheets" }
+  | { kind: "fields"; sheet: string | null; title: string | null };
 
 type Active = { stage: Stage; from: number; to: number; query: string; index: number };
 
@@ -25,27 +37,46 @@ type State = { active: Active | null; dismissed: number | null };
 type Meta = { type: "close" } | { type: "index"; index: number } | { type: "stage"; stage: Stage };
 
 type Item =
+  | { kind: "command"; command: SlashCommand; label: string }
   | { kind: "sheet"; id: string; label: string }
   | { kind: "field"; key: string; label: string; value: string }
   | { kind: "create"; key: string; label: string };
 
 const key = new PluginKey<State>("autocomplete");
 
-/** `#` after a space or at the start, then up to forty characters of the same line. */
-const SHEET_TRIGGER = /(^|\s)#([^#\n]{0,40})$/;
+/** `@` after a space or at the start, then up to forty characters of the same line. */
+const SHEET_TRIGGER = /(^|\s)@([^@\n]{0,40})$/;
+/** `/` the same way. A word may follow it but not a second slash: a path is not a command. */
+const COMMAND_TRIGGER = /(^|\s)\/([^\s/]{0,40})$/;
 const FIELD_TRIGGER = /\{\{([^\s{}]{0,40})$/;
 
 function scan(state: EditorState, prev: Active | null): Active | null {
   const { $from, empty } = state.selection;
   if (!empty || !$from.parent.isTextblock) return null;
+  // Code is text somebody meant literally. A slash in it is a slash.
+  if ($from.parent.type.spec.code === true) return null;
   const before = $from.parent.textBetween(0, $from.parentOffset, undefined, "￼");
+
+  const commands = COMMAND_TRIGGER.exec(before);
+  if (commands) {
+    const raw = commands[2] ?? "";
+    const from = $from.pos - raw.length - 1;
+    const same = prev !== null && prev.from === from;
+    return {
+      stage: { kind: "commands" },
+      from,
+      to: $from.pos,
+      query: raw,
+      index: same && prev.query === raw ? prev.index : 0,
+    };
+  }
 
   const sheets = SHEET_TRIGGER.exec(before);
   if (sheets) {
     const raw = sheets[2] ?? "";
     const from = $from.pos - raw.length - 1;
     const same = prev !== null && prev.from === from;
-    // Once `.` picked a sheet, the text still reads `#Title.` and what follows is the field.
+    // Once `.` picked a sheet, the text still reads `@Title.` and what follows is the field.
     if (same && prev.stage.kind === "fields" && prev.stage.title !== null) {
       const prefix = `${prev.stage.title}.`;
       if (raw.startsWith(prefix)) {
@@ -78,7 +109,16 @@ function scan(state: EditorState, prev: Active | null): Active | null {
   return null;
 }
 
-function items(active: Active, context: ChipContext): Item[] {
+function items(active: Active, context: ChipContext, schema: Schema): Item[] {
+  if (active.stage.kind === "commands") {
+    const q = active.query.trim().toLowerCase();
+    return slashCommands(schema)
+      .map((command) => ({ command, rank: rankCommand(command, q) }))
+      .filter(({ rank }) => rank >= 0)
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, 8)
+      .map(({ command }) => ({ kind: "command", command, label: command.label }) as Item);
+  }
   if (active.stage.kind === "sheets") {
     const q = active.query.trim().toLowerCase();
     return context.sheets
@@ -102,8 +142,31 @@ function items(active: Active, context: ChipContext): Item[] {
   return found;
 }
 
+/**
+ * How well a command answers a query: its own name first, then a word inside it, then the
+ * words it also goes by. -1 is no answer. Order within a band is the list's own order, which
+ * `Array.prototype.sort` keeps.
+ */
+function rankCommand(command: SlashCommand, query: string): number {
+  if (query === "") return 0;
+  const label = command.label.toLowerCase();
+  if (label.startsWith(query)) return 0;
+  if (label.split(" ").some((word) => word.startsWith(query))) return 1;
+  return command.keywords.some((word) => word.startsWith(query)) ? 2 : -1;
+}
+
 function choose(view: EditorView, active: Active, item: Item, context: ChipContext): void {
   const { schema } = view.state;
+  if (item.kind === "command") {
+    // The typed `/query` goes first, so the command acts on a block with nothing of the menu
+    // left in it — a heading made from `/head` must not keep the word.
+    view.dispatch(
+      view.state.tr.delete(active.from, active.to).setMeta(key, { type: "close" } satisfies Meta),
+    );
+    item.command.command(view.state, view.dispatch, view);
+    view.focus();
+    return;
+  }
   const ref = schema.nodes["ref"];
   const field = schema.nodes["field"];
   if (!ref || !field) return;
@@ -123,14 +186,14 @@ function choose(view: EditorView, active: Active, item: Item, context: ChipConte
   view.focus();
 }
 
-/** `.` on a highlighted sheet: the text becomes `#Title.` and the list becomes its fields. */
+/** `.` on a highlighted sheet: the text becomes `@Title.` and the list becomes its fields. */
 function enterFields(view: EditorView, active: Active, item: Item, context: ChipContext): void {
   if (item.kind !== "sheet") return;
   context.foreign(item.id); // start opening it now; the list fills in when it arrives
   const stage: Stage = { kind: "fields", sheet: item.id, title: item.label };
   view.dispatch(
     view.state.tr
-      .insertText(`#${item.label}.`, active.from, active.to)
+      .insertText(`@${item.label}.`, active.from, active.to)
       .setMeta(key, { type: "stage", stage } satisfies Meta),
   );
 }
@@ -164,7 +227,7 @@ export function autocomplete(
         if (!enabled()) return false;
         const active = key.getState(view.state)?.active ?? null;
         if (!active) return false;
-        const list = items(active, context);
+        const list = items(active, context, view.state.schema);
         const move = (step: number) => {
           if (list.length === 0) return;
           const index = (active.index + step + list.length) % list.length;
@@ -179,9 +242,6 @@ export function autocomplete(
             return true;
           case "Enter":
           case "Tab": {
-            // A bare `#` is still just a hash — `# ` is on its way to a heading — so it takes
-            // at least one typed character before Enter means "reference the first match".
-            if (active.stage.kind === "sheets" && active.query.trim() === "") return false;
             const item = list[active.index] ?? list[0];
             if (!item) return false;
             choose(view, active, item, context);
@@ -202,7 +262,7 @@ export function autocomplete(
         }
       },
     },
-    view: (view) => new Popup(view, context),
+    view: (view) => new Popup(view, context, view.state.schema),
   });
 }
 
@@ -212,7 +272,7 @@ class Popup {
   private setActive: (active: Active | null) => void;
   private setPosition: (position: { left: number; top: number }) => void;
 
-  constructor(view: EditorView, context: ChipContext) {
+  constructor(view: EditorView, context: ChipContext, schema: Schema) {
     this.element = document.createElement("div");
     document.body.appendChild(this.element);
     const [active, setActive] = createSignal<Active | null>(null);
@@ -225,6 +285,7 @@ class Popup {
           active={active()}
           position={position()}
           context={context}
+          schema={schema}
           onChoose={(item) => {
             const current = active();
             if (current) choose(view, current, item, context);
@@ -261,19 +322,23 @@ function PopupList(props: {
   active: Active | null;
   position: { left: number; top: number };
   context: ChipContext;
+  schema: Schema;
   onChoose: (item: Item) => void;
   onHighlight: (index: number) => void;
 }) {
-  const list = () => (props.active ? items(props.active, props.context) : []);
+  const list = () => (props.active ? items(props.active, props.context, props.schema) : []);
   const heading = () => {
     const active = props.active;
     if (!active) return "";
+    if (active.stage.kind === "commands") return "Commands";
     if (active.stage.kind === "sheets") return "Sheets";
     return active.stage.title ? `Fields of ${active.stage.title}` : "Fields";
   };
   const hint = () => {
     const active = props.active;
     if (!active) return "";
+    if (active.stage.kind === "commands")
+      return list().length > 0 ? "Enter to insert" : "No command matches";
     if (active.stage.kind === "sheets")
       return list().length > 0 ? "Enter to reference · . for its fields" : "No sheet matches";
     return list().length > 0
@@ -308,11 +373,30 @@ function PopupList(props: {
               onMouseEnter={() => props.onHighlight(index())}
               onClick={() => props.onChoose(item)}
             >
-              <span class="truncate" classList={{ italic: item.kind === "create" }}>
-                {item.label}
+              <span class="flex min-w-0 items-center gap-2">
+                <Show when={item.kind === "command" ? item.command : null}>
+                  {(command) => (
+                    <Dynamic
+                      component={command().icon}
+                      size={14}
+                      class="shrink-0 text-fg-subtle"
+                      aria-hidden="true"
+                    />
+                  )}
+                </Show>
+                <span class="truncate" classList={{ italic: item.kind === "create" }}>
+                  {item.label}
+                </span>
               </span>
-              <Show when={item.kind === "field" ? item : null}>
-                {(field) => <span class="truncate text-xs text-fg-subtle">{field().value}</span>}
+              <Show when={item.kind === "field" ? item.value : null}>
+                {(value) => <span class="truncate text-xs text-fg-subtle">{value()}</span>}
+              </Show>
+              <Show
+                when={item.kind === "command" && item.command.hint !== "" ? item.command : null}
+              >
+                {(command) => (
+                  <span class="shrink-0 font-mono text-xs text-fg-subtle">{command().hint}</span>
+                )}
               </Show>
             </button>
           )}

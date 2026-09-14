@@ -60,6 +60,8 @@ export type CampaignIndexDoc = {
   sheets: SheetSummary[];
   /** The narrator's instructions for this campaign. Absent: the device's default applies. */
   instructions?: string;
+  /** The campaign's chosen picture. Absent: a placeholder is drawn wherever a cover is shown. */
+  cover?: string;
   /** Slice 0 kept one feed per campaign here. `openCampaign` folds it into `conversations`. */
   timelineUrl?: AutomergeUrl;
 };
@@ -102,6 +104,21 @@ export type CampaignHandles = {
     folderId: string | null,
     options?: { kind?: SheetKind; models?: string[] },
   ) => Promise<SheetSummary>;
+  /**
+   * Copies a sheet — body, fields and models — and puts it directly after the original. The
+   * document is cloned rather than read and rewritten, so marks and block structure survive.
+   */
+  duplicateSheet: (id: string) => Promise<SheetSummary>;
+  /** Copies a conversation and its entries, directly after the original. */
+  duplicateConversation: (id: string) => Promise<Conversation>;
+  /**
+   * Removes sheets and their documents for good. The records go first and are flushed before
+   * the documents are dropped, so a crash in between leaves an unreachable document rather
+   * than a record pointing at nothing. Nothing brings these back.
+   */
+  deleteSheets: (ids: readonly string[]) => Promise<void>;
+  /** Removes conversations and their timelines for good. Nothing brings these back. */
+  deleteConversations: (ids: readonly string[]) => Promise<void>;
   /** Resolves once pending changes to the index have reached storage. */
   flush: () => Promise<void>;
 };
@@ -200,8 +217,106 @@ function handlesFor(repo: Repo, index: DocHandle<CampaignIndexDoc>): CampaignHan
       await repo.flush([index.documentId, doc.documentId]);
       return record;
     },
+    async duplicateSheet(id) {
+      const source = index.doc().sheets.find((sheet) => sheet.id === id);
+      if (source === undefined) throw new Error(`No sheet ${id} in this campaign`);
+      if (!isValidAutomergeUrl(source.docUrl)) {
+        throw new Error(`Sheet ${id} does not point at an Automerge URL`);
+      }
+      const doc = repo.clone(await repo.find<SheetDoc>(source.docUrl));
+      const record: SheetSummary = {
+        id: crypto.randomUUID(),
+        title: copyTitle(
+          source.title,
+          index.doc().sheets.map((sheet) => sheet.title),
+        ),
+        folderId: source.folderId,
+        order: source.order,
+        docUrl: doc.url,
+        createdAt: Date.now(),
+        ...(source.kind === undefined ? {} : { kind: source.kind }),
+        ...(source.models === undefined ? {} : { models: [...source.models] }),
+      };
+      index.change((d) => {
+        d.sheets.push(record);
+      });
+      // Beside the one it came from, not at the end of the folder: a copy belongs next to
+      // its original, which is where the eye already is.
+      moveSheet(index, record.id, source.folderId, { id: source.id, side: "after" });
+      await repo.flush([index.documentId, doc.documentId]);
+      const placed = index.doc().sheets.find((sheet) => sheet.id === record.id);
+      return placed === undefined ? record : { ...record, order: placed.order };
+    },
+    async duplicateConversation(id) {
+      const source = index.doc().conversations.find((c) => c.id === id);
+      if (source === undefined) throw new Error(`No conversation ${id} in this campaign`);
+      if (!isValidAutomergeUrl(source.docUrl)) {
+        throw new Error(`Conversation ${id} does not point at an Automerge URL`);
+      }
+      const timeline = repo.clone(await repo.find<TimelineDoc>(source.docUrl));
+      const record: Conversation = {
+        id: crypto.randomUUID(),
+        title: copyTitle(
+          source.title,
+          index.doc().conversations.map((c) => c.title),
+        ),
+        docUrl: timeline.url,
+        createdAt: Date.now(),
+      };
+      index.change((d) => {
+        d.conversations.splice(d.conversations.findIndex((c) => c.id === id) + 1, 0, record);
+      });
+      await repo.flush([index.documentId, timeline.documentId]);
+      return record;
+    },
+    async deleteSheets(ids) {
+      const urls = index
+        .doc()
+        .sheets.filter((sheet) => ids.includes(sheet.id))
+        .map((sheet) => sheet.docUrl);
+      if (urls.length === 0) return;
+      index.change((d) => {
+        const gone = new Set(ids);
+        for (let at = d.sheets.length - 1; at >= 0; at -= 1) {
+          const sheet = d.sheets[at];
+          if (sheet !== undefined && gone.has(sheet.id)) d.sheets.splice(at, 1);
+        }
+      });
+      await repo.flush([index.documentId]);
+      for (const url of urls) if (isValidAutomergeUrl(url)) repo.delete(url);
+    },
+    async deleteConversations(ids) {
+      const urls = index
+        .doc()
+        .conversations.filter((c) => ids.includes(c.id))
+        .map((c) => c.docUrl);
+      if (urls.length === 0) return;
+      index.change((d) => {
+        const gone = new Set(ids);
+        for (let at = d.conversations.length - 1; at >= 0; at -= 1) {
+          const conversation = d.conversations[at];
+          if (conversation !== undefined && gone.has(conversation.id)) {
+            d.conversations.splice(at, 1);
+          }
+        }
+      });
+      await repo.flush([index.documentId]);
+      for (const url of urls) if (isValidAutomergeUrl(url)) repo.delete(url);
+    },
     flush: () => repo.flush([index.documentId]),
   };
+}
+
+/**
+ * What a copy is called: "Varn" becomes "Varn copy", and "Varn copy 2" once the first one is
+ * taken. Duplicating twice must not leave two rows reading the same word.
+ */
+function copyTitle(title: string, taken: readonly string[]): string {
+  const base = `${title} copy`;
+  if (!taken.includes(base)) return base;
+  let n = 2;
+  while (taken.includes(`${base} ${n}`)) n += 1;
+  return `${base} ${n}`;
 }
 
 function newConversation(
@@ -360,21 +475,56 @@ export function renameSheet(index: DocHandle<CampaignIndexDoc>, id: string, titl
   });
 }
 
-/** Moves a sheet into another folder, or to the root with null, appending it there. */
+/**
+ * The order siblings read in, everywhere: `order` first, then title. The tie-break is what a
+ * merge needs — two peers can put two records in the same slot, and the list still has one
+ * answer. The kernel and the tree share it, so a position named in the UI means the same here.
+ */
+export function bySiblingOrder<T extends { order: number; title: string }>(a: T, b: T): number {
+  return a.order - b.order || a.title.localeCompare(b.title);
+}
+
+/** Where a moved sheet lands among the sheets already in a folder. */
+export type Beside = { id: string; side: "before" | "after" };
+
+/**
+ * Moves a sheet into another folder, or to the root with null, and places it among the sheets
+ * already there: beside one of them, or last when `beside` is null. The same folder and a
+ * `beside` is a reorder.
+ *
+ * The destination is renumbered from zero so its slots stay dense; the folder left behind keeps
+ * its gaps, because `order` only ever says who comes first. The position is named as a
+ * neighbour rather than as an index because an archived sheet keeps its slot — it is hidden, not
+ * gone — so what the tree shows and what the folder holds are not the same list.
+ */
 export function moveSheet(
   index: DocHandle<CampaignIndexDoc>,
   id: string,
   folderId: string | null,
+  beside: Beside | null = null,
 ): void {
-  const current = index.doc().sheets.find((s) => s.id === id);
-  if (current === undefined || current.folderId === folderId) return;
-  const order = index.doc().sheets.filter((s) => s.folderId === folderId).length;
-  index.change((doc) => {
-    const target = doc.sheets.find((s) => s.id === id);
-    if (target) {
-      target.folderId = folderId;
-      target.order = order;
-    }
+  const doc = index.doc();
+  const moving = doc.sheets.find((s) => s.id === id);
+  if (moving === undefined) return;
+  if (beside !== null && beside.id === id) return;
+  if (folderId !== null && !doc.folders.some((f) => f.id === folderId)) return;
+  const siblings = doc.sheets
+    .filter((s) => s.folderId === folderId && s.id !== id)
+    .sort(bySiblingOrder);
+  // A neighbour that is not in this folder names no position; the sheet goes last instead.
+  const anchor = beside === null ? -1 : siblings.findIndex((s) => s.id === beside.id);
+  const at = anchor < 0 ? siblings.length : anchor + (beside?.side === "after" ? 1 : 0);
+  const placed = [...siblings.slice(0, at), moving, ...siblings.slice(at)];
+  const settled =
+    moving.folderId === folderId && placed.every((sheet, position) => sheet.order === position);
+  if (settled) return;
+  index.change((d) => {
+    const target = d.sheets.find((s) => s.id === id);
+    if (target) target.folderId = folderId;
+    placed.forEach((sheet, position) => {
+      const record = d.sheets.find((s) => s.id === sheet.id);
+      if (record && record.order !== position) record.order = position;
+    });
   });
 }
 

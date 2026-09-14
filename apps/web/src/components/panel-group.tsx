@@ -1,3 +1,5 @@
+import ArrowLeft from "lucide-solid/icons/arrow-left";
+import ArrowRight from "lucide-solid/icons/arrow-right";
 import {
   createContext,
   createMemo,
@@ -261,9 +263,10 @@ export function PanelGroup(props: {
       const index = ids.indexOf(id);
       return [
         { separator: true },
-        { label: "Move left", onSelect: () => move(id, -1), disabled: index <= 0 },
+        { label: "Move left", icon: ArrowLeft, onSelect: () => move(id, -1), disabled: index <= 0 },
         {
           label: "Move right",
+          icon: ArrowRight,
           onSelect: () => move(id, 1),
           disabled: index < 0 || index >= ids.length - 1,
         },

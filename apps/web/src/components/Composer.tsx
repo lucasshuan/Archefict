@@ -64,7 +64,7 @@ export function Composer(props: {
         </Show>
 
         <div class="flex items-end gap-1">
-          <div class="flex min-w-0 flex-1 items-end gap-2 rounded-3xl bg-surface py-2 pr-2 pl-5 shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-accent/40">
+          <div class="flex min-w-0 flex-1 items-end gap-2 rounded-3xl bg-surface-raised py-2 pr-2 pl-5 shadow-xl transition-shadow focus-within:ring-2 focus-within:ring-accent/40">
             <textarea
               ref={textarea}
               aria-label="What do you do?"

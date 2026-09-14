@@ -3,13 +3,10 @@ import { AiSettings } from "@archefict/schema";
 import Bot from "lucide-solid/icons/bot";
 import Eye from "lucide-solid/icons/eye";
 import EyeOff from "lucide-solid/icons/eye-off";
-import Info from "lucide-solid/icons/info";
 import {
   createResource,
   createSignal,
-  createUniqueId,
   For,
-  type JSX,
   Match,
   onCleanup,
   onMount,
@@ -20,6 +17,7 @@ import { FALLBACK_MODELS, loadModels } from "../api/models.ts";
 import { CONTROL } from "../components/control.ts";
 import { ModelCombobox } from "../components/ModelCombobox.tsx";
 import { summarise } from "../components/model-format.ts";
+import { Field, FieldLabel, Section } from "../components/settings-form.tsx";
 
 /** Icons live on tabs. Fields are plain labels; sections are plain headings. */
 const TABS = [{ id: "ai", label: "AI", icon: Bot }] as const;
@@ -86,8 +84,7 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
       aria-label="Settings"
       class="flex min-w-0 flex-1 flex-col outline-none"
     >
-      {/* pl-14 clears the fixed sidebar toggle, exactly like the campaign header. */}
-      <header class="flex items-center py-3 pr-4 pl-14">
+      <header class="flex items-center px-4 py-3">
         <h1 class="text-base font-semibold tracking-wide">Settings</h1>
       </header>
 
@@ -217,73 +214,6 @@ export function SettingsPage(props: { settings: AiSettings; onSave: (next: AiSet
     </section>
   );
 }
-
-/**
- * A titled group of fields, as a panel raised off the page.
- *
- * Tone alone lifts it off the page — no border, no rule, no icon. An icon, small caps,
- * letter-spacing and a hairline were four marks for one level, and none of them was size or
- * weight, the two the eye reads first. So the heading simply outranks its labels, a step
- * larger and at full brightness against their muted tone, and the controls inside drop back
- * to the page ground: wells cut into the panel, and the contrast that keeps its shape
- * readable without an edge drawn around it.
- */
-function Section(props: { title: string; children: JSX.Element }) {
-  const heading = createUniqueId();
-  return (
-    <section class="flex flex-col gap-5 rounded-app bg-surface p-5" aria-labelledby={heading}>
-      <h2 id={heading} class="text-[15px] font-semibold text-fg">
-        {props.title}
-      </h2>
-      {props.children}
-    </section>
-  );
-}
-
-/**
- * Label plus an info badge. The explanation lives in the badge tooltip rather than under
- * the control, so a page of many settings stays scannable. Hovering the label or the badge
- * shows it, and focusing the badge shows it for the keyboard.
- */
-function FieldLabel(props: { control: string; label: string; hint: string }) {
-  const tip = createUniqueId();
-
-  return (
-    <div class="group/tip relative flex w-fit items-center gap-2">
-      <label for={props.control} class="text-fg-muted">
-        {props.label}
-      </label>
-      <button
-        type="button"
-        aria-label="More information"
-        aria-describedby={tip}
-        class="rounded-full text-fg-subtle transition-colors hover:text-fg-muted"
-      >
-        <Info size={13} aria-hidden="true" />
-      </button>
-      {/* Beside the badge, so it never covers the control it describes and the scrolling
-          panel cannot clip it. Never hit-testable, so it cannot block a click. */}
-      <span
-        id={tip}
-        role="tooltip"
-        class="pointer-events-none absolute top-1/2 left-full z-10 ml-2 w-64 max-w-[calc(100vw-2rem)] -translate-y-1/2 rounded-lg bg-surface-raised px-2.5 py-1.5 text-xs text-fg opacity-0 shadow-lg transition-opacity group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 motion-reduce:transition-none"
-      >
-        {props.hint}
-      </span>
-    </div>
-  );
-}
-
-/** A labelled control. The caller gives its input the same id. */
-function Field(props: { id: string; label: string; hint: string; children: JSX.Element }) {
-  return (
-    <div class="flex flex-col gap-1 text-sm">
-      <FieldLabel control={props.id} label={props.label} hint={props.hint} />
-      {props.children}
-    </div>
-  );
-}
-
 const MODEL_INPUT_ID = "settings-narrator-model";
 
 function ModelField(props: {

@@ -1,8 +1,7 @@
+import AtSign from "lucide-solid/icons/at-sign";
 import Bold from "lucide-solid/icons/bold";
-import Braces from "lucide-solid/icons/braces";
 import Code from "lucide-solid/icons/code";
 import Columns3 from "lucide-solid/icons/columns-3";
-import Hash from "lucide-solid/icons/hash";
 import Heading1 from "lucide-solid/icons/heading-1";
 import Heading2 from "lucide-solid/icons/heading-2";
 import Heading3 from "lucide-solid/icons/heading-3";
@@ -25,7 +24,7 @@ import { lift, setBlockType, toggleMark, wrapIn } from "prosemirror-commands";
 import { redo, undo } from "prosemirror-history";
 import type { Attrs, MarkType, NodeType, Schema } from "prosemirror-model";
 import { liftListItem, wrapInList } from "prosemirror-schema-list";
-import { type Command, type EditorState, TextSelection } from "prosemirror-state";
+import type { Command, EditorState } from "prosemirror-state";
 import {
   addColumnAfter,
   addRowAfter,
@@ -36,6 +35,7 @@ import {
   toggleHeaderRow,
 } from "prosemirror-tables";
 import { createMemo, For, type JSX, Show } from "solid-js";
+import { insertTable, typeTrigger } from "./commands.ts";
 
 type Icon = (props: { size?: number; "aria-hidden"?: "true" }) => JSX.Element;
 
@@ -202,53 +202,9 @@ function toggleWrap(type: NodeType, wrap: Command, unwrap: Command): Command {
 }
 
 /**
- * Types a popup trigger at the caret. `#` only counts after a space or at a line start, so
- * one is put in front when the caret sits right after a word.
+ * The strip, group by group. Every command comes from `commands.ts` where one is shared with
+ * the `/` menu, so the two can never disagree about what a heading is.
  */
-function typeTrigger(trigger: string): Command {
-  return (state, dispatch) => {
-    const { $from, empty } = state.selection;
-    if (!empty || !$from.parent.isTextblock) return false;
-    if (!dispatch) return true;
-    const before = $from.parent.textBetween(0, $from.parentOffset, undefined, "￼");
-    const needsSpace = trigger === "#" && before !== "" && !/\s$/.test(before);
-    dispatch(state.tr.insertText(needsSpace ? ` ${trigger}` : trigger).scrollIntoView());
-    return true;
-  };
-}
-
-/**
- * A 3×3 table with a header row, with the caret left in its first cell. A paragraph follows
- * it when nothing else does: a table that ends the document has no way out below it, and
- * Enter on its last row grows it rather than leaving.
- */
-function insertTable(schema: Schema): Command {
-  const table = schema.nodes["table"];
-  const row = schema.nodes["table_row"];
-  const cell = schema.nodes["table_cell"];
-  const header = schema.nodes["table_header"];
-  const paragraph = schema.nodes["paragraph"];
-  if (!table || !row || !cell || !header || !paragraph) return () => false;
-  return (state, dispatch) => {
-    if (isInTable(state)) return false;
-    if (!dispatch) return true;
-    const rows = [0, 1, 2].map((r) =>
-      row.create(
-        null,
-        [0, 1, 2].map(() => (r === 0 ? header : cell).create()),
-      ),
-    );
-    const node = table.create(null, rows);
-    const tr = state.tr.replaceSelectionWith(node);
-    // The selection lands after the table; the first cell's content starts three tokens in.
-    const after = tr.selection.from;
-    if (tr.doc.resolve(after).nodeAfter === null) tr.insert(after, paragraph.create());
-    const first = after - node.nodeSize + 3;
-    dispatch(tr.setSelection(TextSelection.near(tr.doc.resolve(first))).scrollIntoView());
-    return true;
-  };
-}
-
 function buildGroups(schema: Schema): Tool[][] {
   const groups: Tool[][] = [];
   const key = (k: string) => `${MOD}+${k}`;
@@ -369,13 +325,13 @@ function buildGroups(schema: Schema): Tool[][] {
 
   groups.push([{ label: "Lift out", icon: Outdent, command: lift }]);
 
-  // Chips. Each button types the trigger, so the popup that opens is the same one the
-  // keyboard gets, and the toolbar teaches the syntax rather than hiding it.
-  if (schema.nodes["ref"] && schema.nodes["field"]) {
-    groups.push([
-      { label: "Reference a sheet", icon: Hash, command: typeTrigger("#") },
-      { label: "Place a field", icon: Braces, command: typeTrigger("{{") },
-    ]);
+  // One chip trigger, not two. The button types `@`, so the popup that opens is the one the
+  // keyboard would have opened and the toolbar teaches the syntax rather than hiding it.
+  // Placing a field left the toolbar on Sep 14, 2026 and lives in the `/` menu: `{{` is a
+  // thing you reach for mid-sentence, and a strip of icons above the text is not where a hand
+  // already in the middle of a line goes.
+  if (schema.nodes["ref"]) {
+    groups.push([{ label: "Reference a sheet", icon: AtSign, command: typeTrigger("@") }]);
   }
 
   if (schema.nodes["table"]) {

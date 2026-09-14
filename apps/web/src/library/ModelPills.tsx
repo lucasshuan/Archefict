@@ -2,7 +2,7 @@ import type { SheetSummary } from "@archefict/schema";
 import Diamond from "lucide-solid/icons/diamond";
 import Plus from "lucide-solid/icons/plus";
 import X from "lucide-solid/icons/x";
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, createUniqueId, For, type JSX, Show } from "solid-js";
 import { Popover } from "./FieldValue.tsx";
 
 /**
@@ -25,20 +25,7 @@ export function ModelPills(props: {
   const available = () => props.models.filter((model) => !taken().includes(model.id));
 
   return (
-    <Show
-      when={props.summary.kind !== "model"}
-      fallback={
-        <section class="min-w-0 overflow-x-auto" aria-label="Model information">
-          <div class="flex w-max min-w-full items-center justify-end gap-2 whitespace-nowrap text-xs text-fg-subtle">
-            <span class="inline-flex items-center gap-1 rounded-full bg-accent-muted px-2.5 py-0.5 text-[12.5px] text-accent">
-              <Diamond size={11} aria-hidden="true" />
-              Model
-            </span>
-            Sheets that take this model get its fields, with their types, and its body as a start.
-          </div>
-        </section>
-      }
-    >
+    <Show when={props.summary.kind !== "model"} fallback={<ModelBadge />}>
       <section class="min-w-0 overflow-x-auto" aria-label="Models this sheet takes">
         <div class="flex w-max min-w-full items-center justify-end gap-1.5 whitespace-nowrap">
           <For each={taken()}>
@@ -125,5 +112,71 @@ export function ModelPills(props: {
         </div>
       </section>
     </Show>
+  );
+}
+
+/** What a model does for the sheets that take it. Said once, in the badge's tooltip. */
+const MODEL_HINT =
+  "Sheets that take this model get its fields, with their types, and its body as a start.";
+
+/**
+ * The badge a model wears instead of pills. The sentence explaining what a model is used to
+ * sit beside it and took the width of the header every time the sheet was open; it is now the
+ * badge's tooltip, which a person reads once and then never again.
+ *
+ * The badge keeps a slow sheen crossing it. It is the one thing in the header that says this
+ * sheet is not like the others, so it moves — slowly enough to sit under prose, and not at all
+ * under `prefers-reduced-motion`.
+ */
+function ModelBadge() {
+  let badge: HTMLButtonElement | undefined;
+  const hint = createUniqueId();
+  const [tip, setTip] = createSignal(false);
+
+  return (
+    <section class="flex min-w-0 justify-end" aria-label="Model information">
+      {/* A button because it has to take focus for the keyboard to reach the tooltip; the
+          press toggles it for a pointer that cannot hover. */}
+      <button
+        ref={badge}
+        type="button"
+        aria-describedby={hint}
+        class="model-badge relative inline-flex shrink-0 items-center gap-1 overflow-hidden rounded-full bg-accent-muted px-2.5 py-0.5 text-[12.5px] text-accent"
+        onPointerEnter={() => setTip(true)}
+        onPointerLeave={() => setTip(false)}
+        onFocus={() => setTip(true)}
+        onBlur={() => setTip(false)}
+        onClick={() => setTip((open) => !open)}
+      >
+        <Diamond size={11} aria-hidden="true" />
+        Model
+      </button>
+      {/* The description a screen reader reads is always here; the floating one is the same
+          words drawn, so it is hidden from the tree rather than announced twice. */}
+      <span id={hint} class="sr-only">
+        {MODEL_HINT}
+      </span>
+      <Show when={tip() && badge}>{(anchor) => <Tip anchor={anchor()}>{MODEL_HINT}</Tip>}</Show>
+    </section>
+  );
+}
+
+/**
+ * A tooltip under its anchor. Fixed, not absolute: the sheet header clips its overflow, and a
+ * tooltip that cannot leave the header is a tooltip nobody can read.
+ */
+function Tip(props: { anchor: HTMLElement; children: JSX.Element }) {
+  const WIDTH = 256;
+  const rect = props.anchor.getBoundingClientRect();
+  const left = Math.max(8, Math.min(rect.right - WIDTH, window.innerWidth - WIDTH - 8));
+  return (
+    <div
+      role="presentation"
+      aria-hidden="true"
+      class="pointer-events-none fixed z-30 w-64 rounded-app border border-border bg-surface-raised px-2.5 py-1.5 text-xs text-fg shadow-2xl"
+      style={{ left: `${left}px`, top: `${rect.bottom + 6}px` }}
+    >
+      {props.children}
+    </div>
   );
 }

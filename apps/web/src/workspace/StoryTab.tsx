@@ -2,14 +2,16 @@ import type { CampaignHandles, ConversationHandles } from "@archefict/crdt";
 import type { AiSettings } from "@archefict/schema";
 import MessageSquarePlus from "lucide-solid/icons/message-square-plus";
 import MessageSquareText from "lucide-solid/icons/message-square-text";
+import PanelRightClose from "lucide-solid/icons/panel-right-close";
+import PanelRightOpen from "lucide-solid/icons/panel-right-open";
 import { type Accessor, createResource, onCleanup, onMount, Show } from "solid-js";
 import { createTurnRunner } from "../ai/turn.ts";
 import type { ConversationStore } from "../campaign/conversations.ts";
 import { createDocSignal } from "../campaign/doc-signal.ts";
 import { createTimelineController } from "../campaign/timeline.ts";
+import { ArchiveShelf } from "../components/ArchiveShelf.tsx";
 import { Composer } from "../components/Composer.tsx";
 import { ConversationList } from "../components/ConversationList.tsx";
-import { ArchivedGroup } from "../components/list-row.tsx";
 import { NarrativeFeed } from "../components/NarrativeFeed.tsx";
 import { Panel } from "../components/Panel.tsx";
 import { PanelGroup } from "../components/panel-group.tsx";
@@ -22,7 +24,7 @@ type StoryProps = {
   settings: Accessor<AiSettings>;
   /** The narrator's instructions for this campaign, the default already applied. */
   instructions: Accessor<string>;
-  /** The drawer or another page is over the session: no shortcuts. */
+  /** Another page has the session: no shortcuts. */
   blocked: boolean;
 };
 
@@ -42,8 +44,16 @@ export function StoryTab(props: StoryProps) {
           id="conversations"
           title="Conversations"
           menu={[
-            { label: "New conversation", onSelect: () => void props.conversations.create() },
-            { label: "Hide panel", onSelect: () => props.conversations.toggleList() },
+            {
+              label: "New conversation",
+              icon: MessageSquarePlus,
+              onSelect: () => void props.conversations.create(),
+            },
+            {
+              label: "Hide panel",
+              icon: PanelRightClose,
+              onSelect: () => props.conversations.toggleList(),
+            },
           ]}
         >
           <PanelSection
@@ -62,14 +72,16 @@ export function StoryTab(props: StoryProps) {
               activeId={props.conversations.active()?.id ?? null}
               onSelect={(id) => props.conversations.select(id)}
               onRename={(id, title) => void props.conversations.rename(id, title)}
+              onDuplicate={(id) => void props.conversations.duplicate(id)}
               onArchive={(id) => void props.conversations.archive(id)}
             />
           </PanelSection>
-          <ArchivedGroup
+          <ArchiveShelf
             items={props.conversations.archived()}
             noun="conversation"
             icon={MessageSquareText}
             onRestore={(id) => void props.conversations.restore(id)}
+            onDelete={(ids) => void props.conversations.deleteConversations(ids)}
           />
         </Panel>
       </Show>
@@ -151,6 +163,7 @@ function ConversationView(props: StoryProps & { conversation: ConversationHandle
       menu={[
         {
           label: props.conversations.listHidden() ? "Show conversations" : "Hide conversations",
+          icon: props.conversations.listHidden() ? PanelRightOpen : PanelRightClose,
           onSelect: () => props.conversations.toggleList(),
         },
       ]}

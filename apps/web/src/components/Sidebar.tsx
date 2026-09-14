@@ -1,12 +1,12 @@
-import BookOpen from "lucide-solid/icons/book-open";
+import PanelLeftClose from "lucide-solid/icons/panel-left-close";
+import PanelLeftOpen from "lucide-solid/icons/panel-left-open";
 import Plus from "lucide-solid/icons/plus";
 import Settings from "lucide-solid/icons/settings";
-import Trash2 from "lucide-solid/icons/trash-2";
-import { createEffect, createSignal, For, onCleanup } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import type { CampaignSummary } from "../campaign/store.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { CampaignCover } from "./CampaignCover.tsx";
 import { CreateCampaignDialog } from "./CreateCampaignDialog.tsx";
-import { ACTIVE_ROW } from "./list-row.tsx";
+import { createRailTooltip, RailShowButton } from "./rail.tsx";
 
 export type MockUser = {
   name: string;
@@ -19,6 +19,13 @@ export const GUEST: MockUser = {
   status: "Local only · not signed in",
 };
 
+/**
+ * The shell's own sidebar: campaigns, settings, the account. It is a rail — one column of
+ * covers with the app's two other destinations at its foot, every one of them a picture or
+ * an icon with its name in a tooltip — and there is no wider form with labels: the covers
+ * are the labels. It hides to nothing. Hidden, the workspace has the whole width, and the
+ * one thing left of the rail is a faint button at the page's corner to bring it back.
+ */
 export function Sidebar(props: {
   campaigns: readonly CampaignSummary[];
   activeUrl: string | null;
@@ -26,110 +33,128 @@ export function Sidebar(props: {
   settingsActive: boolean;
   user: MockUser;
   open: boolean;
-  onClose: () => void;
   onSelect: (url: string) => void;
   onCreate: (name: string) => void;
-  onDelete: (url: string) => void;
   onOpenSettings: () => void;
+  onToggle: () => void;
 }) {
   const [creating, setCreating] = createSignal(false);
-  const [pendingDelete, setPendingDelete] = createSignal<CampaignSummary | null>(null);
-
-  createEffect(() => {
-    if (!props.open) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && document.querySelector("dialog[open]") === null) {
-        props.onClose();
-      }
-    };
-    document.addEventListener("keydown", closeOnEscape);
-    onCleanup(() => document.removeEventListener("keydown", closeOnEscape));
-  });
+  const tooltip = createRailTooltip("left");
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="Close sidebar"
-        aria-hidden={!props.open}
-        tabIndex={-1}
-        class="fixed inset-0 z-10 bg-bg/70 backdrop-blur-[2px] transition-opacity duration-200 motion-reduce:transition-none"
-        classList={{
-          "opacity-100": props.open,
-          "pointer-events-none opacity-0": !props.open,
-        }}
-        onClick={() => props.onClose()}
-      />
       <aside
-        id="campaign-drawer"
+        id="campaign-sidebar"
         aria-label="Campaign sidebar"
-        aria-hidden={!props.open}
-        inert={!props.open}
-        class="fixed inset-y-0 left-0 z-20 flex w-64 shrink-0 flex-col bg-surface shadow-2xl transition-transform duration-200 ease-out motion-reduce:transition-none"
-        classList={{ "-translate-x-full": !props.open }}
+        class="flex shrink-0 flex-col overflow-hidden bg-bg transition-[width] duration-200 ease-out motion-reduce:transition-none"
+        classList={{ "w-14 border-r border-border/50": props.open, "w-0": !props.open }}
       >
-        <div class="flex items-center py-3 pl-14 pr-4">
-          <span class="flex items-center gap-2 font-narrative text-lg tracking-wide">
-            Archefict
-          </span>
-        </div>
+        {/* Everything inside is laid out for the rail's own width and never re-measures:
+            hiding only takes the aside to zero and clips, so the rail slides out under the
+            clip rather than reflowing on the way, and nothing re-anchors while it animates. */}
+        <header class="flex h-12 w-14 shrink-0 items-center justify-center">
+          <button
+            type="button"
+            class="rounded-app p-1.5 text-fg-muted transition-colors hover:bg-surface-raised hover:text-fg motion-reduce:transition-none"
+            aria-label="Hide campaign sidebar"
+            aria-controls="campaign-sidebar"
+            aria-expanded={props.open}
+            {...tooltip.on(() => "Hide campaign sidebar")}
+            onClick={() => props.onToggle()}
+          >
+            <PanelLeftClose size={18} aria-hidden="true" />
+          </button>
+        </header>
 
-        <nav class="flex min-h-0 flex-1 flex-col px-2" aria-label="Campaigns">
-          <div class="flex items-center justify-between px-2 pb-1">
-            <span class="text-xs font-semibold uppercase tracking-wider text-fg-muted">
-              Campaigns
-            </span>
+        <nav class="flex min-h-0 w-14 flex-1 flex-col px-2" aria-label="Campaigns">
+          <div class="flex justify-center pb-1">
             <button
               type="button"
               class="rounded-app p-1 text-fg-muted hover:bg-surface-raised hover:text-fg"
               aria-label="New campaign"
-              title="New campaign"
+              {...tooltip.on(() => "New campaign")}
               onClick={() => setCreating(true)}
             >
               <Plus size={16} aria-hidden="true" />
             </button>
           </div>
-          <ul class="flex-1 space-y-0.5 overflow-y-auto">
+          {/* Cards in a column, not rows: a campaign is a place, and its picture tells it
+              from the others faster than its name does — a shelf of covers to pick from
+              rather than a list to read down. */}
+          {/* `-mx-2 px-2`: the list reaches the rail's edge and pads itself back, so the
+              pill each card hangs in the gutter is inside the list's own box. Left in the
+              nav's padding instead, it would be outside the list, and a list that scrolls
+              clips what is outside it. */}
+          <ul
+            class="-mx-2 grid flex-1 content-start gap-2 overflow-y-auto px-2"
+            onScroll={tooltip.hide}
+          >
             <For each={props.campaigns}>
               {(campaign) => {
                 const active = () => campaign.url === props.activeUrl;
+                let picture!: HTMLSpanElement;
+                // Named by its picture rather than by the row: the pill in the gutter is part
+                // of the row, and a tooltip beside the pill would float off the card.
+                const show = () => tooltip.show(picture, campaign.name);
                 return (
                   <li
-                    class="group flex items-center rounded-lg transition-colors hover:bg-surface-raised/60 motion-reduce:transition-none"
-                    classList={{
-                      [`bg-surface-raised hover:bg-surface-raised ${ACTIVE_ROW}`]: active(),
-                    }}
+                    class="group relative"
+                    onMouseEnter={show}
+                    onMouseLeave={tooltip.hide}
+                    onFocusIn={show}
+                    onFocusOut={tooltip.hide}
                   >
-                    <button
-                      type="button"
-                      class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm hover:text-fg"
-                      classList={{
-                        "text-fg": active(),
-                        "text-fg-muted": !active(),
-                      }}
-                      aria-current={active() ? "page" : undefined}
-                      onClick={() => {
-                        props.onSelect(campaign.url);
-                        props.onClose();
-                      }}
+                    {/* The pill: the accent at the rail's edge, tall for the current
+                        campaign and short for the one under the pointer, the way a rail of
+                        avatars does it. It hangs in the gutter outside the picture, so it is
+                        a state of the card and never a frame on the picture. */}
+                    <span
+                      class="pointer-events-none absolute inset-x-0 top-0 aspect-square"
+                      aria-hidden="true"
                     >
-                      <BookOpen
-                        size={14}
-                        class="shrink-0"
-                        classList={{ "text-accent": active() }}
-                        aria-hidden="true"
+                      <span
+                        // Scaled, not resized: `scale` and `opacity` animate on the
+                        // compositor, so the pill glides while the picture beside it is busy
+                        // re-filtering. A height transition lays out every frame and stutters
+                        // under that load. Tailwind v4 sets the `scale` property, not
+                        // `transform`, so that is what the transition names.
+                        class="absolute top-1/2 -left-2 h-8 w-1 origin-center -translate-y-1/2 rounded-r-full bg-accent transition-[scale,opacity] duration-400 ease-in-out motion-reduce:transition-none"
+                        classList={{
+                          "scale-y-100 opacity-100": active(),
+                          "scale-y-0 opacity-0 group-hover:scale-y-50 group-hover:opacity-100 group-focus-within:scale-y-50 group-focus-within:opacity-100":
+                            !active(),
+                        }}
                       />
-                      <span class="truncate">{campaign.name}</span>
-                    </button>
+                    </span>
                     <button
                       type="button"
-                      class="mr-1 rounded-app p-1 text-fg-muted opacity-0 transition-opacity hover:bg-bg hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
-                      classList={{ "opacity-100": active() }}
-                      aria-label={`Delete ${campaign.name}`}
-                      title="Delete campaign"
-                      onClick={() => setPendingDelete(campaign)}
+                      class="block w-full overflow-hidden rounded-lg"
+                      aria-current={active() ? "page" : undefined}
+                      // The card is only a picture, so the name is given outright.
+                      aria-label={campaign.name}
+                      onClick={() => {
+                        tooltip.hide();
+                        props.onSelect(campaign.url);
+                      }}
                     >
-                      <Trash2 size={14} aria-hidden="true" />
+                      {/* The current campaign is marked by being the only one at full
+                          strength: the rest sit back — darker, flatter, colour half drained —
+                          and lift partway towards it on hover. Filters, not opacity: opacity
+                          over the ground darkens a cover but leaves it as saturated and as
+                          contrasty as the current one, so a shelf of bright covers still
+                          shouts; pulling saturation and contrast is what makes the rest
+                          recede. Works the same whether the cover is a drawing or a photo. */}
+                      <span
+                        ref={picture}
+                        class="block aspect-square w-full transition-[filter] duration-400 ease-in-out motion-reduce:transition-none"
+                        classList={{
+                          "brightness-100 contrast-100 saturate-100": active(),
+                          "brightness-30 contrast-80 saturate-50 group-hover:brightness-60 group-hover:contrast-95 group-hover:saturate-75":
+                            !active(),
+                        }}
+                      >
+                        <CampaignCover src={campaign.cover} seed={campaign.url} />
+                      </span>
                     </button>
                   </li>
                 );
@@ -138,58 +163,57 @@ export function Sidebar(props: {
           </ul>
         </nav>
 
-        <div class="p-2">
+        <div class="flex w-14 flex-col items-center gap-1 p-2">
           <button
             type="button"
-            class="flex w-full items-center gap-2 rounded-app px-2 py-1.5 text-left text-sm hover:bg-surface-raised hover:text-fg"
+            class="flex h-9 w-10 items-center justify-center rounded-app transition-colors hover:bg-surface-raised hover:text-fg motion-reduce:transition-none"
             classList={{
               "bg-surface-raised text-fg": props.settingsActive,
               "text-fg-muted": !props.settingsActive,
             }}
             aria-current={props.settingsActive ? "page" : undefined}
-            onClick={() => {
-              props.onOpenSettings();
-              props.onClose();
-            }}
+            aria-label="Settings"
+            {...tooltip.on(() => "Settings")}
+            onClick={() => props.onOpenSettings()}
           >
             <Settings size={16} aria-hidden="true" />
-            Settings
           </button>
-          <div class="mt-1 flex items-center gap-3 rounded-app px-2 py-2">
+          <div
+            class="flex h-10 w-10 items-center justify-center"
+            {...tooltip.on(() => `${props.user.name} · ${props.user.status}`)}
+          >
             <span
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-fg"
-              aria-hidden="true"
+              role="img"
+              class="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-fg"
+              aria-label={props.user.name}
             >
               {initials(props.user.name)}
-            </span>
-            <span class="min-w-0">
-              <span class="block truncate text-sm">{props.user.name}</span>
-              <span class="block truncate text-xs text-fg-muted">{props.user.status}</span>
             </span>
           </div>
         </div>
       </aside>
+
+      <Show when={!props.open}>
+        <RailShowButton
+          rail="left"
+          label="Show campaign sidebar"
+          controls="campaign-sidebar"
+          tooltip={tooltip}
+          onClick={() => props.onToggle()}
+        >
+          <PanelLeftOpen size={16} aria-hidden="true" />
+        </RailShowButton>
+      </Show>
+
+      {tooltip.view()}
 
       <CreateCampaignDialog
         open={creating()}
         onCreate={(name) => {
           setCreating(false);
           props.onCreate(name);
-          props.onClose();
         }}
         onClose={() => setCreating(false)}
-      />
-      <ConfirmDialog
-        open={pendingDelete() !== null}
-        title="Delete campaign"
-        message={`Delete "${pendingDelete()?.name ?? ""}" and everything in it? This cannot be undone.`}
-        confirmLabel="Delete"
-        onConfirm={() => {
-          const target = pendingDelete();
-          setPendingDelete(null);
-          if (target) props.onDelete(target.url);
-        }}
-        onClose={() => setPendingDelete(null)}
       />
     </>
   );

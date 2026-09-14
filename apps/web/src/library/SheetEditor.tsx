@@ -72,7 +72,7 @@ import type { SheetViewStore } from "./view-store.ts";
  * become blocks as they are typed; Backspace straight after one takes it back.
  *
  * Fields and references are chips (`chips.tsx`): `hp:: ` and `{{hp}}` become field chips as
- * they are typed (`field-rules.ts`), `#` and `{{` open the popups (`autocomplete.tsx`).
+ * they are typed (`field-rules.ts`), `/`, `@` and `{{` open the popups (`autocomplete.tsx`).
  *
  * Two views on top of the rendered one (`view-store.ts`, docs/sheets.md): the field index
  * above the body, and the editable raw source in place of it. Raw parses back into the same

@@ -4,6 +4,11 @@ import { createSignal, Show } from "solid-js";
 /**
  * A heading that turns into an input on click. Enter commits, Escape cancels, blur commits.
  * Blank or unchanged values are dropped without calling back.
+ *
+ * Both states take the whole width they are given and no more. A button shrink-wraps its
+ * content by default, so without `w-full` a long name pushes straight through a narrow
+ * container — the sidebar it lives in — and `min-w-0` on the wrapper cannot pull it back.
+ * The caller owns the width; this only ever fills it.
  */
 export function EditableTitle(props: { value: string; onCommit: (next: string) => void }) {
   const [editing, setEditing] = createSignal(false);
@@ -31,7 +36,7 @@ export function EditableTitle(props: { value: string; onCommit: (next: string) =
       fallback={
         <button
           type="button"
-          class="group flex min-w-0 items-center gap-2 rounded-app px-2 py-1 text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none"
+          class="group flex w-full min-w-0 items-center gap-2 rounded-app px-2 py-1 text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none"
           title="Rename campaign"
           onClick={start}
         >
@@ -65,7 +70,7 @@ export function EditableTitle(props: { value: string; onCommit: (next: string) =
           }
         }}
         onBlur={commit}
-        class="min-w-0 max-w-md flex-1 rounded-app bg-surface-raised px-2 py-1 ring-2 ring-accent/50 text-base font-semibold tracking-wide outline-none"
+        class="w-full min-w-0 rounded-app bg-surface-raised px-2 py-1 ring-2 ring-accent/50 text-base font-semibold tracking-wide outline-none"
       />
     </Show>
   );

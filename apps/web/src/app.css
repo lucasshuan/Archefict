@@ -10,16 +10,16 @@
 :root {
   color-scheme: dark;
 
-  /* Panel ground. A tab's panels are cut out of --surface in this tone, so the gutter
-     between them, not a border or a tone difference, is what tells one panel from the next. */
-  /* Cool by five degrees and lift the whole ladder by 0.008. Keeping those changes uniform
+  /* Workspace ground. Brighter --surface panels sit on this darker tone, while their gutters
+     keep neighboring regions distinct without adding borders. */
+  /* Cool by five degrees and lift the whole ladder uniformly. Keeping those changes uniform
      preserves the depth between layers while taking the near-black, slightly violet edge off. */
-  --bg: oklch(0.168 0.012 260);
-  --surface: oklch(0.208 0.014 260);
-  --surface-raised: oklch(0.253 0.016 260);
+  --bg: oklch(0.174 0.012 260);
+  --surface: oklch(0.214 0.014 260);
+  --surface-raised: oklch(0.259 0.016 260);
   /* Under every other tone: a text control is a well cut into whatever holds it. */
-  --surface-sunken: oklch(0.133 0.01 260);
-  --border: oklch(0.328 0.018 260);
+  --surface-sunken: oklch(0.139 0.01 260);
+  --border: oklch(0.334 0.018 260);
   --fg: oklch(0.93 0.008 85);
   --fg-muted: oklch(0.68 0.012 85);
   --fg-subtle: oklch(0.6 0.012 85);
@@ -30,6 +30,10 @@
   --danger: oklch(0.62 0.19 25);
   --danger-fg: oklch(0.98 0.01 25);
   --accent-muted: oklch(0.8 0.085 70 / 0.14);
+  /* The accent a little way round the wheel and a little lighter. Nothing is painted in it:
+     it exists so the Model badge's gradient has somewhere to travel to and back. Not mapped
+     into the theme below, because no utility should be able to reach for it. */
+  --accent-drift: oklch(0.86 0.08 45);
   /* Tags: a select option takes one of these by its place in the list. Dim enough to sit
      under the same text as the panel; hue is the only thing that tells them apart. */
   --tag-1: oklch(0.31 0.045 30);
@@ -38,10 +42,10 @@
   --tag-4: oklch(0.31 0.045 90);
   --tag-5: oklch(0.3 0.045 320);
   --tag-6: oklch(0.3 0.045 200);
-  --scrollbar-thumb: oklch(0.348 0.018 260);
-  --scrollbar-thumb-hover: oklch(0.468 0.018 260);
+  --scrollbar-thumb: oklch(0.354 0.018 260);
+  --scrollbar-thumb-hover: oklch(0.474 0.018 260);
 
-  --radius: 0.75rem;
+  --radius: 0.625rem;
   /* Content column for every page: the feed, the composer, settings. One knob. */
   --page-width: 56rem;
   --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -119,6 +123,11 @@ body {
   ::selection {
     background: var(--accent-muted);
   }
+  /* WebKit's own clear button for a search field is a dark glyph that vanishes on a dark
+     ground, and every search field here draws its own beside it. */
+  input[type="search"]::-webkit-search-cancel-button {
+    display: none;
+  }
 }
 
 /*
@@ -166,50 +175,10 @@ body {
 }
 
 @layer components {
-  .hamburger-icon {
-    position: relative;
-    display: block;
-    width: 1.125rem;
-    height: 1rem;
-  }
-  .hamburger-line {
-    position: absolute;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    border-radius: 999px;
-    background: currentColor;
-    transform-origin: center;
-    transition:
-      top 180ms ease,
-      opacity 140ms ease,
-      transform 180ms ease;
-  }
-  .hamburger-line:nth-child(1) {
-    top: 1px;
-  }
-  .hamburger-line:nth-child(2) {
-    top: 7px;
-  }
-  .hamburger-line:nth-child(3) {
-    top: 13px;
-  }
-  [data-open="true"] > .hamburger-icon > .hamburger-line:nth-child(1) {
-    top: 7px;
-    transform: rotate(45deg);
-  }
-  [data-open="true"] > .hamburger-icon > .hamburger-line:nth-child(2) {
-    opacity: 0;
-    transform: scaleX(0.35);
-  }
-  [data-open="true"] > .hamburger-icon > .hamburger-line:nth-child(3) {
-    top: 7px;
-    transform: rotate(-45deg);
-  }
-
   @media (prefers-reduced-motion: reduce) {
-    .hamburger-line {
-      transition: none;
+    .model-badge::after {
+      animation: none;
+      opacity: 0;
     }
   }
 
@@ -326,6 +295,46 @@ body {
   }
 }
 
+/*
+ * The Model badge. Its fill drifts: warm gold to a lighter, rosier gold and back, at a steady
+ * pace that never stops or restarts. It used to be one band sweeping past with a long pause at
+ * each end, which read as a glitch rather than as a state — the eye caught the sweep, found the
+ * badge still by the time it looked, and learned to distrust it. A gradient that is always
+ * somewhere in its cycle says "running" without ever asking to be watched.
+ *
+ * The tile is sized in pixels, not percent, so one step of the animation is exactly one tile
+ * whatever the badge is called and the loop has no seam. The tile reads accent → drift → accent,
+ * so tiles meet on the same colour and the repeat is invisible. The badge clips its own
+ * overflow, so none of this reaches the header around it.
+ */
+@layer components {
+  .model-badge::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      100deg,
+      color-mix(in oklch, var(--accent) 8%, transparent) 0%,
+      color-mix(in oklch, var(--accent-drift) 32%, transparent) 50%,
+      color-mix(in oklch, var(--accent) 8%, transparent) 100%
+    );
+    background-size: 180px 100%;
+    background-repeat: repeat;
+    animation: model-badge-drift 6s linear infinite;
+  }
+}
+
+@keyframes model-badge-drift {
+  /* Both ends in pixels. An implicit start would be 0%, and a percentage interpolated
+     against a length is one more thing to have to be right about. */
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 180px 0;
+  }
+}
+
 dialog::backdrop {
   background: oklch(0 0 0 / 0.55);
   backdrop-filter: blur(3px);
@@ -345,6 +354,43 @@ dialog::backdrop {
     overflow-wrap: anywhere;
     caret-color: var(--accent);
   }
+  /*
+   * Editor spacing is not reading spacing. The rendered narrative sets 0.85em between blocks
+   * because it is prose somebody reads once; here every Enter makes a paragraph, and 0.85em
+   * between two of them draws a blank line that is not in the document. Tighter, so a list of
+   * short lines reads as a list.
+   *
+   * The reset for the first and last block has to be re-stated against .ProseMirror. The
+   * rendered one is `.narrative-markdown > :first-child`, and ProseMirror's own element is
+   * that child — so the rule lands on the editor and never reaches the paragraph inside it,
+   * which is where the gap under the toolbar came from.
+   */
+  .sheet-editor .ProseMirror > :first-child {
+    margin-block-start: 0;
+  }
+  .sheet-editor .ProseMirror > :last-child {
+    margin-block-end: 0;
+  }
+  .sheet-editor .ProseMirror p,
+  .sheet-editor .ProseMirror blockquote,
+  .sheet-editor .ProseMirror pre,
+  .sheet-editor .ProseMirror ul,
+  .sheet-editor .ProseMirror ol,
+  .sheet-editor .ProseMirror table {
+    margin-block: 0.35em;
+  }
+  .sheet-editor .ProseMirror h1,
+  .sheet-editor .ProseMirror h2,
+  .sheet-editor .ProseMirror h3,
+  .sheet-editor .ProseMirror h4,
+  .sheet-editor .ProseMirror h5,
+  .sheet-editor .ProseMirror h6 {
+    margin-block: 0.8em 0.2em;
+  }
+  .sheet-editor .ProseMirror hr {
+    margin-block: 0.8em;
+  }
+
   .sheet-editor .ProseMirror img {
     max-width: 100%;
     border-radius: var(--radius);
