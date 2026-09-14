@@ -26,6 +26,8 @@ Origin: running AI RPGs with campaign data spread across Fibery, Notion and Obsi
 * Rich text: tables, images and references. Stored as structure, never as markup
 * Fields written inline as you type, kept structured: `::` sets one, `{{ }}` shows one, `[[ ]]` links a sheet
 * A field can belong to another sheet, so a fact is written once and shown anywhere
+* Structure is optional and shared by choice: a sheet can take one or more models, never required to. A model is a sheet other sheets take their shape from; a folder can hand one to every sheet made inside it
+* Views over sheets — table, board, list, calendar on the campaign's own months and weekdays; maps later. LegendKeeper is the reference for how free and how good-looking these should be
 
 ## AI
 * On-demand code execution

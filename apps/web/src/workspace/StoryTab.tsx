@@ -1,6 +1,7 @@
 import type { CampaignHandles, ConversationHandles } from "@archefict/crdt";
 import type { AiSettings } from "@archefict/schema";
 import MessageSquarePlus from "lucide-solid/icons/message-square-plus";
+import MessageSquareText from "lucide-solid/icons/message-square-text";
 import { type Accessor, createResource, onCleanup, onMount, Show } from "solid-js";
 import { createTurnRunner } from "../ai/turn.ts";
 import type { ConversationStore } from "../campaign/conversations.ts";
@@ -8,8 +9,11 @@ import { createDocSignal } from "../campaign/doc-signal.ts";
 import { createTimelineController } from "../campaign/timeline.ts";
 import { Composer } from "../components/Composer.tsx";
 import { ConversationList } from "../components/ConversationList.tsx";
+import { ArchivedGroup } from "../components/list-row.tsx";
 import { NarrativeFeed } from "../components/NarrativeFeed.tsx";
-import { Panel, PanelAction } from "../components/Panel.tsx";
+import { Panel } from "../components/Panel.tsx";
+import { PanelGroup } from "../components/panel-group.tsx";
+import { PanelSection, SectionAction } from "../components/panel-section.tsx";
 import { SaveIndicator } from "../components/SaveIndicator.tsx";
 
 type StoryProps = {
@@ -25,35 +29,51 @@ type StoryProps = {
 /**
  * The Story tab: a campaign's conversations beside the one being played. Two panels, peers.
  * The list writes the active id into the store and the narrative follows it, so either could
- * move without the other knowing (docs/workspace.md). The arrangement is fixed until Slice 5.
+ * move without the other knowing (docs/workspace.md). The list starts on the right, so hiding
+ * it leaves the reading column's left edge where it was; from there the panel group is what
+ * moves and resizes the two.
  */
 export function StoryTab(props: StoryProps) {
   return (
-    <div class="flex min-h-0 flex-1">
+    <PanelGroup id="story" defaultOrder={["narrative", "conversations"]}>
+      <ConversationPane {...props} />
       <Show when={!props.conversations.listHidden()}>
         <Panel
+          id="conversations"
           title="Conversations"
-          class="w-64 shrink-0 bg-surface"
-          actions={
-            <PanelAction label="New conversation" onClick={() => void props.conversations.create()}>
-              <MessageSquarePlus size={16} aria-hidden="true" />
-            </PanelAction>
-          }
-          menu={[{ label: "Hide panel", onSelect: () => props.conversations.toggleList() }]}
+          menu={[
+            { label: "New conversation", onSelect: () => void props.conversations.create() },
+            { label: "Hide panel", onSelect: () => props.conversations.toggleList() },
+          ]}
         >
-          <ConversationList
-            open={props.conversations.open()}
-            archived={props.conversations.archived()}
-            activeId={props.conversations.active()?.id ?? null}
-            onSelect={(id) => props.conversations.select(id)}
-            onRename={(id, title) => void props.conversations.rename(id, title)}
-            onArchive={(id) => void props.conversations.archive(id)}
+          <PanelSection
+            label="Conversations"
+            actions={
+              <SectionAction
+                label="New conversation"
+                onClick={() => void props.conversations.create()}
+              >
+                <MessageSquarePlus size={16} aria-hidden="true" />
+              </SectionAction>
+            }
+          >
+            <ConversationList
+              open={props.conversations.open()}
+              activeId={props.conversations.active()?.id ?? null}
+              onSelect={(id) => props.conversations.select(id)}
+              onRename={(id, title) => void props.conversations.rename(id, title)}
+              onArchive={(id) => void props.conversations.archive(id)}
+            />
+          </PanelSection>
+          <ArchivedGroup
+            items={props.conversations.archived()}
+            noun="conversation"
+            icon={MessageSquareText}
             onRestore={(id) => void props.conversations.restore(id)}
           />
         </Panel>
       </Show>
-      <ConversationPane {...props} />
-    </div>
+    </PanelGroup>
   );
 }
 
@@ -124,8 +144,9 @@ function ConversationView(props: StoryProps & { conversation: ConversationHandle
 
   return (
     <Panel
+      id="narrative"
       title={title()}
-      class="flex-1 bg-bg"
+      width={null}
       status={<SaveIndicator state={timeline.saveState()} />}
       menu={[
         {
@@ -158,12 +179,12 @@ function ConversationView(props: StoryProps & { conversation: ConversationHandle
 
 function EmptyStory(props: { onCreate: () => void }) {
   return (
-    <Panel title="Narrative" class="flex-1 bg-bg">
+    <Panel id="narrative" title="Narrative" width={null}>
       <div class="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
         <p class="font-narrative text-fg-muted">Every conversation is archived.</p>
         <button
           type="button"
-          class="rounded-app bg-accent px-3 py-1 font-medium text-accent-fg hover:opacity-90"
+          class="rounded-app bg-accent-muted px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/25 motion-reduce:transition-none"
           onClick={props.onCreate}
         >
           New conversation

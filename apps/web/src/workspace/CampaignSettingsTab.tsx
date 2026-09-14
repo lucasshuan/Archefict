@@ -49,8 +49,9 @@ export function CampaignSettingsTab(props: {
 
   return (
     <Panel
+      id="campaign-settings"
       title="Settings"
-      class="flex-1 bg-bg"
+      class="flex-1"
       menu={[{ label: "Reset instructions to default", onSelect: reset, disabled: !custom() }]}
     >
       <div class="min-h-0 flex-1 overflow-y-auto px-4 py-5">

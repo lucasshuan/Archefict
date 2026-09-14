@@ -82,6 +82,45 @@ Once components claim keys (Slice 4), the claimed type decides: last-write-wins 
 enums, text diff for prose. Unclaimed keys keep the text diff, which is the safer default for
 free-form values.
 
+## What a field is
+
+A field's value is always a string. What is added, when someone says so, is a description of
+it beside the value, never inside it — `meta[key]` on the sheet document:
+
+| Type | Says | Reads as |
+|---|---|---|
+| **text** | nothing more | the string |
+| **number** | `unit`, `decimals`, `thousands` | `1,100 crowns`, tabular figures, unit dimmed |
+| **select** | `options` | one tag, coloured by its place in the list |
+| **multi-select** | `options` | several tags; the value is `ally, fence` |
+| **checkbox** | nothing more | a box; the value is `true` / `false` |
+| **date** | nothing more | reserved for campaign time (Slice 3); shown, not yet editable |
+| **formula** | `expr` | computed on read from other fields; stores no value |
+
+**Where a field's type comes from, first match wins:** the sheet's own `meta[key]`; the models
+it takes, in the order taken (below); inferred from the value (`^-?\d+(\.\d+)?$` is a number,
+`true`/`false` a checkbox); text. A sheet with no `meta` renders
+exactly as before. Changing a type never touches the value: `1100` stays `1100`, only shown
+differently. Inference never pulls the control away mid-word — typing `true` into a text well
+does not turn it into a checkbox until it is committed.
+
+**The index is rows, not a form.** `icon · name · value`; nothing is an input at rest; a value
+edits on click in the control its type calls for; the type sits behind the icon with that type's
+few options under the same menu; adding one is a quiet row at the bottom. The chip in the prose
+reads and edits through the same pieces, so the index and the body never disagree about what
+`1,100 crowns` looks like.
+
+**Formulas** are the smallest language that reads `level + prof`: the four operations,
+parentheses, unary minus, numbers, and other fields by name — including other formulas, to a
+depth that stops a cycle. Errors are sentences (`name is not a number`, `divided by zero`) shown
+on hover. It grows when a play session asks, not before. A hyphenated key cannot be told apart
+from a subtraction, so formulas see `[A-Za-z_]\w*` names only.
+
+**What stays the same:** chips, the raw view (`[debt:: 1100]`), the merge rules. The model's
+view will read `debt: 1100 crowns` — the unit is worth the tokens, the separator is not.
+Slice 4's components claim keys the same way `meta` does; nothing here is re-entered when they
+arrive, and merge-strategy-by-type (`sheets.md` above) now has a type to follow.
+
 ## Transclusion: one value, many sheets
 
 A field can be owned by a sheet other than the one it appears on. This is what stops the same fact
@@ -115,7 +154,7 @@ for trusting.
 |---|---|---|
 | **1. Rendered** | Chips as values, variables hidden, toolbar, commands. The default. | yes |
 | **2. Rendered + properties** | The same, with the field index opened **above or below** the body | yes |
-| **3. Raw** | Literal `::`, `{{ }}`, `[[ ]]`. What was typed. | later — see below |
+| **3. Raw** | Literal `::`, `{{ }}`, `[[ ]]`. What was typed. | yes |
 | **4. Context** | The exact string sent to the model | no |
 
 Two consequences worth stating:
@@ -127,10 +166,9 @@ Two consequences worth stating:
   the model saw has one syntax to learn rather than two. This is a constraint on the serialiser,
   and a cheap one.
 
-**Raw view ships read-only first.** Making it editable requires a parser that is the exact inverse
-of the serialiser — property-test territory, and a lossy round trip silently destroys work. Read-
-only is most of the value at a fraction of the risk. Promote it when the round-trip property tests
-exist.
+**Raw is parsed through the inverse of its serialiser.** Edits replace the rendered document as
+they are typed; pair forms also write their field values. Round-trip tests keep Markdown blocks,
+marks, tables, references and field placements from changing shape between the two views.
 
 View 4 has no equivalent in Obsidian, Notion or Fibery, and it is the one that makes AI behaviour
 debuggable instead of mysterious. It is also nearly free: the serialiser exists for the tools
@@ -196,6 +234,88 @@ sheet doc:    pluginState[id] = { ...real state... }        merges properly
 Every hole is also a capability boundary. Plugin content renders in a sandboxed iframe, never in
 the host document — which is exactly what makes an opaque node safe where raw HTML was not.
 Default-deny, as `stack.md` requires.
+
+## Built, and what building it found
+
+Sep 13, 2026 (`apps/web/src/library/`): the custom adapter (`schema.ts`), tables, the field and
+reference chips (`chips.tsx`), the typed syntax (`field-rules.ts`), the `#` / `{{` popups
+(`autocomplete.tsx`), the index-above-body and raw views (`view-store.ts`, `PropertiesBlock.tsx`,
+`serialize.ts`), the toolbar. The fields panel is gone. Views 1–3 exist; raw is editable through
+the inverse parser; view 4 is Slice 5.
+
+Three things the code taught that the plan did not know:
+
+1. **A table cell is a single line.** Automerge holds a flat run of block markers with
+   `parents`, and the binding emits a marker for a container only when the container has a
+   textblock child. Cells as boxes of paragraphs would make rows markerless and every row's cells
+   indistinguishable from the next row's. Cells as textblocks (`inline*`) make rows emit markers
+   and the table rebuild from `parents`, the way a list rebuilds around its items. Enter in a cell
+   therefore moves down a column and grows the table, never splits the cell.
+2. **The binding leaves a container's default first child implicit,** and an implicit child with
+   no text in it is nothing at all — an empty first cell vanished. The row's default type is now
+   a phantom node (`cell_slot`, never created) so every real cell is explicit. The same limit
+   exists upstream for an empty first paragraph in a blockquote; it is the binding's, not ours.
+3. **`hasMarkup` never matches.** The adapter puts `isAmgBlock` and `unknownAttrs` on every node,
+   so ProseMirror's deep attribute compare fails against `{ level: 2 }`. Anything that asks "is
+   this block an H2" compares only the attributes it asked about. This will bite every node view
+   and command written from here on; it is documented at the one place it was hit.
+
+Also confirmed in the browser: a field edited from the index and from its chip at the same time
+merges, because both are `updateText` on one map key; a borrowed chip follows the owning sheet's
+edit live; every chip and table survives a reload intact.
+
+Later the same day: field types (`FieldMeta` in `packages/schema`, `meta` on `sheet:<id>`,
+`fields.ts`, `FieldValue.tsx`), and the index rebuilt as rows. One more finding: a Solid
+`<Show keyed>` on a description object that is re-derived on every document change remounts the
+control under the person's fingers — the input blurs, the editor closes, the character is lost.
+Everything in `FieldValue.tsx` switches on `meta.type`, a string, never on the object.
+
+## Shared structure: models
+
+**Decided Sep 13, 2026, and built the same day.** The noun is **model** (the kernel said
+*component* until then; that word now means nothing here). A model is a sheet other sheets take
+their shape from. The proposal with mockups and the five options weighed — structure on a
+container · one type per sheet · several per sheet · none shared · a copied template — is at
+<https://claude.ai/code/artifact/facda9ca-ef56-4037-8fca-7c5bf0819fc6>; this is the third, with
+the ergonomics of a template and the convenience of a folder.
+
+- **A model is a sheet** (`kind: "model"` on its index record), made from the Sheets section or
+  the Library `⋯`. Its index defines the fields with their types — the same rows, the same type
+  menu — and its values are the defaults a taking sheet reads until it has its own. It shows a
+  ◆ in the tree and a single *Model* pill under its title.
+- **A sheet takes several**, from the pills under its title (`models` on its index record, in
+  the order taken). Taking adds the model's fields, typed, grouped under the model's name in the
+  index; the first model to claim a key wins; a key nobody claims sits under *Only here*.
+  Dropping keeps every value — structure never destroys content, only stops claiming it.
+- **A folder hands** models (`models` on the folder) to sheets made inside it, at creation.
+  Handed, not imposed: the sheet lists them and can drop them; moving a sheet changes nothing.
+- **A claimed field's type menu names its model** and offers the two honest moves: *Edit in
+  Character* (every sheet that takes it) or *Override here* (this sheet's own `meta`, which
+  always wins). *Back to Character's* undoes the override.
+- **Save fields as model** (sheet `⋯`) promotes the shape a sheet already has: keys and types
+  copied, values not, taken at once by the sheet it came from. Progressive formalization as a
+  button.
+- **Chips agree with the index:** a chip reads a model-typed field by that type, and shows the
+  model's default dimmed while the sheet has nothing of its own.
+
+Resolution order is now: the sheet's own `meta[key]` → the models it takes, in order → inferred
+from the value → text. A key a model never described reads the way the model's own row reads it
+(inferred from the model's default), so `level: 1` on a model is a number on every taker.
+
+Not yet: model-driven validation of claimed keys, plugin-shipped models, a model built on
+another, renaming a claimed key across sheets (waits for the operations pipeline, Slice 4), and
+views over "every Character" (Slices 5–6).
+
+### References
+
+- **LegendKeeper** — calendars with the campaign's own months, weekdays, week and year lengths;
+  maps that nest; page templates; an app that looks good. The reference for views and for looks.
+- **Tana** — supertags: a tag carries fields, a node takes several, views per tag. The closest
+  existing model to "components, several per sheet".
+- **Notion, Fibery** — structure on the container (database, type). Views come free; a page has
+  one home. The rigidity this design avoids.
+- **Obsidian Bases** — no schema; the view decides at query time over frontmatter. The freedom
+  this design keeps for sheets that take nothing.
 
 ## Now-decisions
 

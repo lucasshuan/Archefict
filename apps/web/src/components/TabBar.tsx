@@ -38,8 +38,8 @@ export function TabBar<Id extends string>(props: {
               title={tab.label}
               class="rounded-app p-1.5 transition-colors"
               classList={{
-                "bg-surface text-accent": selected(),
-                "text-fg-muted hover:bg-surface hover:text-fg": !selected(),
+                "bg-surface-raised text-accent": selected(),
+                "text-fg-muted hover:bg-surface-raised hover:text-fg": !selected(),
               }}
               onClick={() => props.onSelect(tab.id)}
             >

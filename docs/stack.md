@@ -8,7 +8,7 @@
 
 1. **Automerge is canonical.** Everything else is a rebuildable projection. A cache you cannot delete is not a cache.
 2. **Pluralism in the views, not the kernel.** The core is boring and strong. Obsidian, Fibery, LegendKeeper and Risu-like behaviour happen above it.
-3. **Progressive formalization.** Unstructured, then a field typed in the flow of writing, then a component claiming that key, then validation, then plugin-enhanced. No step re-enters anything. Schema is never mandatory.
+3. **Progressive formalization.** Unstructured, then a field typed in the flow of writing, then a model claiming that key, then validation, then plugin-enhanced. No step re-enters anything. Schema is never mandatory.
 4. **Every write is a typed operation** through one deterministic pipeline, for humans, plugins and AI alike.
 5. **Web and desktop are equal execution environments.** A platform interface abstracts secrets, files, network mode and local models.
 6. **Plugins are default-deny.** Capabilities are revocable handles, never tokens.
@@ -20,12 +20,14 @@
 ## Data model
 
 ```
-Sheet { id, body: rich text (blocks + marks), fields: free-form map,
-        refs: stable ids, view?: PluginSurface, components?: ComponentId[],
-        pluginState: { [nodeId]: opaque }, meta + provenance }
-Component = schema fragment: claimed fields, summary fields, UI hints, AI serializer hints.
-Several per sheet. Plugin-definable, not a fixed host list.
-Validation applies only to keys a component claims. Everything else is free.
+Sheet { id, kind: "sheet" | "model", body: rich text (blocks + marks),
+        fields: free-form map of strings, meta?: per-key description (type, unit, options…),
+        models?: SheetId[] (taken, in order), refs: stable ids, view?: PluginSurface,
+        pluginState: { [nodeId]: opaque }, provenance }
+Model = a sheet of kind "model": its fields and their types are what taking it brings; its
+values are defaults; its body is a start. Several per sheet, first claim on a key wins. A
+folder hands models to sheets made inside it. Plugin-shipped later, same shape.
+Validation applies only to keys a model claims. Everything else is free.
 ```
 
 - Documents: `campaign-index`, `sheet:<id>`, `timeline:<id>`, `chat:<id>` (chunked), `plugin-state:<id>`. Never one doc per campaign.

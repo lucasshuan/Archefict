@@ -44,7 +44,7 @@ export function NarrativeFeed(props: {
 
   return (
     <section
-      class="flex-1 overflow-y-auto px-4 pt-1 pb-6"
+      class="flex-1 overflow-y-auto px-4 pt-4 pb-6"
       aria-label="Narrative"
       aria-live="polite"
     >

@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { AiSettings, ModelId, NarrativeEntry } from "./index.ts";
+import { AiSettings, FieldMeta, ModelId, NarrativeEntry } from "./index.ts";
 
 const entryArb = fc.record({
   id: fc.uuid(),
@@ -73,5 +73,30 @@ describe("AiSettings", () => {
       systemPrompt: "Narrate.",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("FieldMeta", () => {
+  it("parses each description and keeps only what that type has", () => {
+    expect(
+      FieldMeta.parse({ type: "number", unit: "crowns", decimals: 0, thousands: true }),
+    ).toEqual({
+      type: "number",
+      unit: "crowns",
+      decimals: 0,
+      thousands: true,
+    });
+    expect(FieldMeta.parse({ type: "select", options: ["alive", "wounded"] })).toEqual({
+      type: "select",
+      options: ["alive", "wounded"],
+    });
+    expect(FieldMeta.parse({ type: "formula", expr: "level + prof" }).type).toBe("formula");
+    expect(FieldMeta.parse({ type: "text", unit: "leak" })).toEqual({ type: "text" });
+  });
+
+  it("rejects a type it does not know and a select without options", () => {
+    expect(FieldMeta.safeParse({ type: "money" }).success).toBe(false);
+    expect(FieldMeta.safeParse({ type: "select" }).success).toBe(false);
+    expect(FieldMeta.safeParse({ type: "number", decimals: 9 }).success).toBe(false);
   });
 });

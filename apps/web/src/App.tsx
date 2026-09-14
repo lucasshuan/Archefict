@@ -95,6 +95,12 @@ function Shell(props: { library: Library }) {
 type TabId = "story" | "library" | "settings";
 
 /**
+ * The ground a tab's panels sit on, padded so every panel has a gutter of it on all sides.
+ * No top padding: the top bar's own is the gap above the first row of panels.
+ */
+const TAB_GROUND = "min-h-0 flex-1 flex-col px-2 pb-2";
+
+/**
  * The default tabs. Users compose their own in Slice 5; Settings is the one that cannot be
  * removed (docs/workspace.md).
  */
@@ -127,7 +133,7 @@ function Session(props: {
   return (
     // The hidden attribute would lose to the flex utility, so swap the display class.
     <main
-      class="min-w-0 flex-1 flex-col"
+      class="min-w-0 flex-1 flex-col bg-surface"
       classList={{ flex: !props.hidden, hidden: props.hidden }}
       inert={props.blocked}
     >
@@ -140,7 +146,7 @@ function Session(props: {
         id="tabpanel-story"
         role="tabpanel"
         aria-labelledby="tab-story"
-        class="min-h-0 flex-1 flex-col"
+        class={TAB_GROUND}
         classList={{ flex: tab() === "story", hidden: tab() !== "story" }}
       >
         <StoryTab
@@ -155,7 +161,7 @@ function Session(props: {
         id="tabpanel-library"
         role="tabpanel"
         aria-labelledby="tab-library"
-        class="min-h-0 flex-1 flex-col"
+        class={TAB_GROUND}
         classList={{ flex: tab() === "library", hidden: tab() !== "library" }}
       >
         <LibraryTab handles={props.handles} sheets={sheets} />
@@ -164,7 +170,7 @@ function Session(props: {
         id="tabpanel-settings"
         role="tabpanel"
         aria-labelledby="tab-settings"
-        class="min-h-0 flex-1 flex-col"
+        class={TAB_GROUND}
         classList={{ flex: tab() === "settings", hidden: tab() !== "settings" }}
       >
         <CampaignSettingsTab

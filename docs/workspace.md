@@ -17,16 +17,17 @@ content.
 | --- | --- | --- |
 | **Tab** | A full-screen layout of a campaign, one icon on the top bar. | A browser tab. |
 | **Panel** | A region of a tab with a bar and a `⋯` menu. Every region is one. | *Component* — that word is taken. |
-| **Component** | A typed bundle of fields attached to a sheet (Slice 4). Unchanged. | A layout unit. |
+| **Model** | A sheet other sheets take their shape from: its fields, their types, its values as defaults (`sheets.md`). Was *component* until Sep 13, 2026. | A layout unit; the AI model. |
 | **Conversation** | One thread of play; a document of narrative entries. | The campaign's only feed. |
 | **Folder** | A node of the library tree. Holds folders and sheets, nothing else. | A sheet. |
 | **Sheet** | A document in the library: body, fields, refs, view (`sheets.md`). Has no children. | An HTML page. |
 | **Field** | A named value on a sheet. Typed inline, stored in a map (`sheets.md`). | Text inside the prose. |
 
-The brief used *component* for layout units. Slice 4 already uses it for the field bundles that
-give a sheet structure, and the AI serialization is "driven by attached components". Two meanings
-for the word the kernel is built around would cost more than a rename now: layout units are
-**panels**.
+The brief used *component* for layout units, and the kernel used it for the field bundles that
+give a sheet structure. Both uses are gone: layout units are **panels**, and the bundles are
+**models** (decided Sep 13, 2026). *Model* meets the AI model only in code, where a sheet's
+record says `models` and the AI side says `narratorModel`; in the UI the two never share a
+screen.
 
 ## Tabs
 
@@ -76,30 +77,111 @@ special-cased sidebar. Arrangement is fixed per default tab today and edited in 
 
 ### The bar
 
-Height `h-8`. Title in `text-fg-muted text-xs`, an actions slot (the panel's one or two primary
-buttons: *new conversation*, *new sheet*), then `⋯`. The menu holds the panel's own options first;
-layout options (*hide*, later *move*, *split*) after a separator. A hidden panel comes back from
+Height `h-6`, a hairline under it, and **no name**: an optional status, then `⋯`, both pushed
+right. The bar started with a title and lost it — a panel and its one section were saying the
+same word twice, *Conversations* over *OPEN*, *Library* over *SHEETS*, so the name went to the
+section, which is where the content it names begins. What is left on the bar is exactly what is
+about the panel rather than about what is in it: somewhere to grip, how the document is doing,
+and the options. The `title` prop stays as the panel's accessible name and labels its menu.
+
+No hover tint — the only tone a bar could take is the ground's, which reads as a hole punched in
+the card rather than a highlight; the grab cursor is what says it is a handle. The menu holds the
+panel's own options first, including everything its sections can make, then layout options
+(*hide*, *move left*, *move right*, later *split*) after a separator. A hidden panel comes back from
 the tab's own `⋯` at the end of the top bar, which lists panels with checkmarks and offers
 *Reset layout*. Until Slice 5 that tab menu can be a single *Show conversations* toggle.
 
 Settings is a tab with one panel and an almost empty `⋯`. Uniformity is worth a redundant bar.
 
+### Sections
+
+Inside the body, a panel holds **sections**: a named group with a header of its own — small,
+uppercase, `text-fg-subtle` — carrying both the panel's name and that group's actions, the
+actions revealed on hover the way a row reveals rename and archive. Every visible name in a tab
+is a section's: *CONVERSATIONS*, *SHEETS*, and *ARCHIVED* under each list. *New sheet* and *new folder* belong to the sheets, not to the frame
+around them, which is why they left the bar. VS Code's Explorer is the same shape and for the
+same reason: one view, several groups, each with its own buttons.
+
+What this buys is room. A panel can grow a second group — an outline, what was opened recently,
+a filter — without its bar growing a second set of buttons, and without either group having to
+become a panel of its own.
+
+Sections do not collapse. The one thing that folds is **Archived**, which is not a section: it
+sits under the list it left, pinned to the bottom of the panel, saying how many there are even
+while closed. One shared piece serves both tabs (`list-row.tsx`). It is *set* like a section
+header — 11px, uppercase, `text-fg-subtle` — because *Open* and *Archived* are a pair, and a
+pair that reads as one thing needs one typeface between them.
+
+Hover-revealed buttons are not discoverable on their own, so every section action is also an item
+in the panel's `⋯`. That menu is the answer to "how would anyone know", and it is the keyboard's
+way in as well.
+
+### The card
+
+A panel is a rounded card in `--bg`, with no border, on a tab ground of `--surface`; the gutter
+of ground between two panels is the whole of what separates them. Tone said it before, which
+meant the list and the narrative had to disagree about which of them was the darker one — a
+question Slice 5 cannot answer once panels move. A gutter has no such question: every panel is
+the same card wherever it lands, and the ground shows through between them, which is also where
+a dragged panel will be dropped. The top bar sits on the ground too, outside the cards, so the
+campaign title and the tabs read as the shell rather than as part of the story.
+
+The tones inside follow from it: the panel is `--bg`, a row under the pointer `--surface`, the
+active row `--surface-raised`, and a text control `--surface-sunken` — a well cut below whatever
+holds it, whether that is a panel or a settings card. A row's own buttons darken to `--bg` on
+hover instead of lifting, because the panel's tone is the one thing below every row state.
+
+Rows are `rounded-lg`, not `rounded-xl`: at 12px the corner curves away from the accent rule on
+the left edge and leaves it floating. Every row in every panel reads `[icon] [label]` from one
+inset, so the conversations and the sheets line up across the gutter between two panels; the tree
+steps a sheet in by a chevron's width only where there are folders beside it to line up with.
+
+The active row also takes a hairline of accent down its left edge (`ACTIVE_ROW`, `list-row.tsx`),
+in the sidebar, the conversations and the tree alike. Two signals rather than one: tone alone is
+four steps of lightness in a dark theme, and the smallest dose of accent that reads is a 2px rule.
+
+### Moving and resizing
+
+Shipped ahead of the rest of Slice 5, because a panel that says *move me* with a bar and a `⋯`
+and then cannot be moved is worse than no bar at all. What exists:
+
+- **Drag the bar** to change the order along the row. The press has to travel 4px first, so the
+  bar's buttons still take clicks, and a panel only changes place once the pointer is past the
+  midpoint of the panel it is passing — otherwise a still hand makes two panels flicker.
+- **Drag a gutter** to change the widths. One panel per tab takes the leftover (`width={null}`);
+  the others carry pixels, and a gutter resizes whichever of its two neighbours has pixels.
+  Arrow keys on a focused gutter move it 16px at a time. Widths clamp to 160-720px.
+- **Move left / move right** in the panel's `⋯`, after a separator, which is the same rearranging
+  for a keyboard.
+- Order and widths are remembered per tab in `localStorage`, like drafts and the sidebar. They are
+  a device's preference, not campaign content, so they never reach the document.
+
+Position is CSS `order`, never DOM order: a dragged panel keeps its element, so a streaming reply,
+a scroll position and a ProseMirror view all survive the move. Panels take the even orders and the
+gutters between them the odd ones.
+
+Still Slice 5's: moving a panel between tabs, splitting, stacking, vertical arrangement, hiding
+from a tab-level `⋯`, and *Reset layout*.
+
 ## Story
 
 ```
-┌──────────────────────────────┬────────────────────────────────────────────────────────┐
-│ Conversations         [+] ⋯  │ Narrative                                          ⋯  │
-│ ────────────────────────────│                                                        │
-│ ● The Ashgrove Heist         │   …feed…                                               │
-│   Downtime, week 3           │                                                        │
-│   (archived) Session zero    │                                                        │
-│                              │ ┌────────────────────────────────────────────────────┐ │
-│                              │ │ composer                                           │ │
-└──────────────────────────────┴─┴────────────────────────────────────────────────────┴─┘
+┌────────────────────────────────────────────────────────┬──────────────────────────────┐
+│                                                     ⋯  │                           ⋯  │
+│                                                        │ CONVERSATIONS             +  │
+│   …feed…                                               │   ● The Ashgrove Heist       │
+│                                                        │     Downtime, week 3         │
+│ ┌────────────────────────────────────────────────────┐ │                              │
+│ │ composer                                           │ │                              │
+│ └────────────────────────────────────────────────────┘ │ › ARCHIVED (1)               │
+└────────────────────────────────────────────────────────┴──────────────────────────────┘
 ```
 
 - **Conversations panel**: list, create, rename inline, archive (undoable, so no confirm),
-  reorder. Active one highlighted. Width `w-64`, collapsible.
+  reorder. Active one highlighted. Width `w-64`, collapsible, and on the **right**: the prose
+  is what the eye returns to, so it keeps the left edge, and hiding the list widens the reading
+  column instead of sliding it sideways. The Library's tree sits right for the same reason.
+  Slice 5 lets anyone move either.
 - **Narrative panel**: the existing feed and composer, bound to the active conversation. Undo
   history is already per document; it becomes per conversation for free if keyed by doc url.
 - Data: `campaign-index` gains `conversations: [{ id, title, docUrl, createdAt, archivedAt? }]`;
@@ -111,33 +193,42 @@ Settings is a tab with one panel and an almost empty `⋯`. Uniformity is worth 
 ## Library
 
 ```
-┌────────────────────────┬───────────────────────────────────────────────────────────────┐
-│ Library         [+] ⋯  │ Varn Ashgrove                                             ⋯  │
-│ ▾ Characters           │                                                               │
-│   ▾ Allies             │   class Rogue   level 5   status wounded                      │
-│     Varn Ashgrove   ●  │                                                               │
-│     Mira Vance         │   Varn runs the docks out of a rented room above the          │
-│   ▸ Rivals             │   Gullet. He owes the Thieves' Guild  900  crowns.            │
-│ ▸ Places               │                                                               │
-│ ▸ Factions             ├───────────────────────────────────────────────────────────────┤
-│                        │ Fields                                                    ⋯  │
-│                        │ class Rogue · level 5 · status wounded · debt → Mira Vance    │
-└────────────────────────┴───────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┬────────────────────────┐
+│                                                            ⋯  │                     ⋯  │
+│ ↶ ↷ │ ¶ H1 H2 H3 │ B I <> │ ≡ ≣ ❝ ⌨ ▦ │ ⇤ │ # {}        ☰ </> │ SHEETS            + +  │
+│   Varn Ashgrove                                               │   ▾ Characters         │
+│                                                               │     ▾ Allies           │
+│   class Rogue   level 5   status wounded                      │         Varn Ashgrove ●│
+│                                                               │     ▸ Rivals           │
+│   Varn runs the docks above the Gullet. He owes [Mira Vance]  │   ▸ Places             │
+│   a sum of [850] crowns.                                      │   ▸ Factions           │
+│                                                               │                        │
+│                                                               │ › ARCHIVED (2)         │
+└───────────────────────────────────────────────────────────────┴────────────────────────┘
 ```
 
-Three panels: the **tree**, the **sheet** (body editor), **fields**.
+Two panels: the **sheet** (body editor) against the reading edge, the **tree** far right. The
+fields panel is gone (Sep 13, 2026): fields are typed into the body and live there as chips, and
+the index of them is a *view* of the sheet, not a place beside it — see below.
 
-Fields are typed inline, in the flow of writing, and stored in a map — `sheets.md` owns that
-model. The fields panel is therefore not "the structured half" but **the index**: every field on
-the sheet, including ones never placed in the body, and the place to see a field's owner when it
-is borrowed from another sheet.
+The sheet panel carries a **formatting toolbar** between its bar and its body — undo and redo,
+block type, marks, lists, quote, code block and table, lift, then the two chip triggers — the
+one strip in the app that is always visible rather than hover-revealed, because formatting is
+what the panel is for. Buttons reflect the selection and a lit block button clears back to a
+paragraph; inside a table the table tools take the place of the insert button. Markdown prefixes
+(`## `, `- `, `1. `, `> `, ```` ``` ````) become blocks as they are typed. The block commands left
+the panel `⋯` the day the toolbar arrived; the bar is a handle, not a toolbar.
 
-It sits **above or below the body, not beside it**. Fields are part of the document; reading them
-across a vertical gutter fights that. It is still a panel, so it can be hidden or moved by anyone
-who disagrees.
+At the toolbar's right end sit the **view switches**, which are about the sheet rather than the
+text: *Fields* opens the index above the body — one row per field, `icon · name · value`, typed
+(`sheets.md`), nothing an input at rest, edited on click, a quiet row to add one, the type behind
+the icon — and *Raw* replaces the rendered body with the editable source as
+typed (`::`, `{{ }}`, `[[ ]]`, Markdown blocks, pipe tables). Both are one choice
+for every sheet on the device (`archefict:sheet-view`), so switching sheets keeps them, and both
+are repeated in the panel `⋯`. Hidden by default: fields live where they were written.
 
-A sheet has four presentations — rendered, rendered with the field index, raw, and the exact
-string sent to the model. The fourth is a Slice 5 panel. All four are specified in `sheets.md`.
+The fourth presentation — the exact string sent to the model — is a Slice 5 panel. All four are
+specified in `sheets.md`.
 
 ### The name
 
@@ -219,7 +310,7 @@ silently fail every tool call.
 
 ## Order of work
 
-1. **Workspace shell.** Tab bar, `Panel` with bar and `⋯`, Story tab with fixed two-panel layout,
+1. **Workspace shell.** Tab bar, `Panel` with bar and `⋯`, Story tab with a two-panel layout,
    Settings tab with Instructions moved. Conversations in `campaign-index`. Reuses every part of
    Slice 0. Pulled forward the way Slice 0 was.
 2. **Tools flag** in the catalogue and the picker. Small; alongside 1.

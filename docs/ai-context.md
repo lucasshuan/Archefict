@@ -117,8 +117,9 @@ library_read(["s_k3f"], fields: "all")       every field
 library_read(["s_k3f"], body: "full")        and the prose
 ```
 
-A component declares which handful of its claimed keys are summary fields. Untyped sheets fall
-back to a capped first-n.
+A model declares which handful of its claimed keys are summary fields (the header line also
+names the models a sheet takes: `Characters/Allies · Character, Merchant`). Sheets that take
+none fall back to a capped first-n.
 
 This separates two decisions that get confused:
 

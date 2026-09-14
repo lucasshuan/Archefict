@@ -10,10 +10,16 @@
 :root {
   color-scheme: dark;
 
-  --bg: oklch(0.16 0.012 265);
-  --surface: oklch(0.2 0.014 265);
-  --surface-raised: oklch(0.245 0.016 265);
-  --border: oklch(0.32 0.018 265);
+  /* Panel ground. A tab's panels are cut out of --surface in this tone, so the gutter
+     between them, not a border or a tone difference, is what tells one panel from the next. */
+  /* Cool by five degrees and lift the whole ladder by 0.008. Keeping those changes uniform
+     preserves the depth between layers while taking the near-black, slightly violet edge off. */
+  --bg: oklch(0.168 0.012 260);
+  --surface: oklch(0.208 0.014 260);
+  --surface-raised: oklch(0.253 0.016 260);
+  /* Under every other tone: a text control is a well cut into whatever holds it. */
+  --surface-sunken: oklch(0.133 0.01 260);
+  --border: oklch(0.328 0.018 260);
   --fg: oklch(0.93 0.008 85);
   --fg-muted: oklch(0.68 0.012 85);
   --fg-subtle: oklch(0.6 0.012 85);
@@ -24,8 +30,16 @@
   --danger: oklch(0.62 0.19 25);
   --danger-fg: oklch(0.98 0.01 25);
   --accent-muted: oklch(0.8 0.085 70 / 0.14);
-  --scrollbar-thumb: oklch(0.34 0.018 265);
-  --scrollbar-thumb-hover: oklch(0.46 0.018 265);
+  /* Tags: a select option takes one of these by its place in the list. Dim enough to sit
+     under the same text as the panel; hue is the only thing that tells them apart. */
+  --tag-1: oklch(0.31 0.045 30);
+  --tag-2: oklch(0.3 0.045 150);
+  --tag-3: oklch(0.3 0.045 260);
+  --tag-4: oklch(0.31 0.045 90);
+  --tag-5: oklch(0.3 0.045 320);
+  --tag-6: oklch(0.3 0.045 200);
+  --scrollbar-thumb: oklch(0.348 0.018 260);
+  --scrollbar-thumb-hover: oklch(0.468 0.018 260);
 
   --radius: 0.75rem;
   /* Content column for every page: the feed, the composer, settings. One knob. */
@@ -42,6 +56,7 @@
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
   --color-border: var(--border);
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
@@ -51,6 +66,12 @@
   --color-danger: var(--danger);
   --color-danger-fg: var(--danger-fg);
   --color-accent-muted: var(--accent-muted);
+  --color-tag-1: var(--tag-1);
+  --color-tag-2: var(--tag-2);
+  --color-tag-3: var(--tag-3);
+  --color-tag-4: var(--tag-4);
+  --color-tag-5: var(--tag-5);
+  --color-tag-6: var(--tag-6);
 
   --radius-app: var(--radius);
   --container-page: var(--page-width);
@@ -102,31 +123,45 @@ body {
 
 /*
  * Scrollbars: one thin, quiet bar everywhere, from the base layer. Never styled per element.
- * The standard properties cover Firefox and Chromium; Chromium ignores the ::-webkit rules
- * once scrollbar-width is set, so those exist for Safari and older WebKit (Tauri, later).
- * The transparent border on the WebKit thumb keeps it visually thin inside a wider hit area.
+ * Two paths to one look. Firefox takes the standard properties. Chromium and WebKit take the
+ * ::-webkit rules — Chromium drops those the moment scrollbar-width or scrollbar-color is set,
+ * and its standard thin bar keeps the arrow buttons on Windows, which only
+ * ::-webkit-scrollbar-button can remove. So the WebKit branch puts the standard properties
+ * back to auto first. The transparent border on the thumb keeps it visually thin inside a
+ * wider hit area.
  */
 @layer base {
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) transparent;
   }
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-  ::-webkit-scrollbar-track,
-  ::-webkit-scrollbar-corner {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    border: 3px solid transparent;
-    border-radius: 999px;
-    background: var(--scrollbar-thumb);
-    background-clip: padding-box;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--scrollbar-thumb-hover);
+  @supports selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-button {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      border: 3px solid transparent;
+      border-radius: 999px;
+      background: var(--scrollbar-thumb);
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: var(--scrollbar-thumb-hover);
+    }
   }
 }
 
@@ -316,5 +351,41 @@ dialog::backdrop {
   }
   .sheet-editor .ProseMirror-selectednode {
     outline: 2px solid var(--accent);
+  }
+
+  /* Tables in the editor are real tables (the rendered rules make them scrolling blocks),
+     and the editor scrolls sideways for a wide one instead of the table squeezing. */
+  .sheet-editor {
+    overflow-x: auto;
+  }
+  .sheet-editor .ProseMirror table {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  .sheet-editor .ProseMirror td,
+  .sheet-editor .ProseMirror th {
+    position: relative;
+    min-width: 3em;
+    vertical-align: top;
+  }
+  .sheet-editor .ProseMirror .selectedCell::after {
+    background: var(--accent-muted);
+  }
+
+  /* A chip: a field or a reference placed in the prose. */
+  .sheet-editor .ProseMirror .chip {
+    display: inline-block;
+    border-radius: 0.4rem;
+    background: var(--surface-raised);
+    padding: 0 0.4em;
+    font-family: var(--font-body);
+    font-size: 0.9em;
+    line-height: 1.5;
+    white-space: nowrap;
+    vertical-align: baseline;
+  }
+  .sheet-editor .ProseMirror .chip.ProseMirror-selectednode {
+    outline-offset: 1px;
   }
 }

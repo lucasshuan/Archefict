@@ -26,8 +26,11 @@ import {
   renameSheet,
   restoreConversation,
   restoreSheet,
+  setFolderModels,
   setInstructions,
   setSheetField,
+  setSheetFieldMeta,
+  setSheetModels,
   sheetsOf,
   type TimelineDoc,
   undoAction,
@@ -317,6 +320,74 @@ describe("library", () => {
     removeSheetField(doc, "level");
     removeSheetField(doc, "level");
     expect(doc.doc().fields).toEqual({ class: "Rogue / Thief" });
+  });
+
+  it("describes a field beside its value, and removes both together", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Meta");
+    const sheet = await handles.createSheet("Varn", null);
+    const { doc } = await handles.openSheet(sheet.id);
+    expect(doc.doc().meta).toBeUndefined();
+
+    setSheetField(doc, "debt", "1100");
+    setSheetFieldMeta(doc, "debt", { type: "number", unit: "crowns", thousands: true });
+    setSheetFieldMeta(doc, "status", { type: "select", options: ["alive", "wounded"] });
+    setSheetFieldMeta(doc, "to_hit", { type: "formula", expr: "level + prof" });
+    setSheetFieldMeta(doc, " ", { type: "text" });
+    expect(doc.doc().fields).toEqual({ debt: "1100" });
+    expect(doc.doc().meta).toEqual({
+      debt: { type: "number", unit: "crowns", thousands: true },
+      status: { type: "select", options: ["alive", "wounded"] },
+      to_hit: { type: "formula", expr: "level + prof" },
+    });
+
+    // Replaced whole, so a unit set earlier does not leak into the new description.
+    setSheetFieldMeta(doc, "debt", { type: "text" });
+    expect(doc.doc().meta?.["debt"]).toEqual({ type: "text" });
+    setSheetFieldMeta(doc, "debt", null);
+    expect(doc.doc().meta?.["debt"]).toBeUndefined();
+    expect(doc.doc().fields["debt"]).toBe("1100");
+
+    removeSheetField(doc, "to_hit");
+    expect(doc.doc().meta?.["to_hit"]).toBeUndefined();
+    removeSheetField(doc, "debt");
+    expect(doc.doc().fields).toEqual({});
+  });
+
+  it("makes models, hands them from a folder at creation, and lets a sheet take or drop them", async () => {
+    const repo = new Repo();
+    const handles = createCampaign(repo, "Models");
+    const { index } = handles;
+    const character = await handles.createSheet("Character", null, { kind: "model" });
+    const merchant = await handles.createSheet("Merchant", null, { kind: "model" });
+    expect(character.kind).toBe("model");
+    expect(character.models).toBeUndefined();
+
+    const folder = createFolder(index, "Characters", null);
+    setFolderModels(index, folder.id, [character.id, "missing", character.id]);
+    expect(foldersOf(index)[0]?.models).toEqual([character.id]);
+
+    // Handed at creation; a model made inside takes nothing; an explicit list overrides.
+    const varn = await handles.createSheet("Varn", folder.id);
+    expect(varn.models).toEqual([character.id]);
+    const inside = await handles.createSheet("Rival", folder.id, { kind: "model" });
+    expect(inside.models).toBeUndefined();
+    const bare = await handles.createSheet("Notes", folder.id, { models: [] });
+    expect(bare.models).toBeUndefined();
+
+    setSheetModels(index, varn.id, [character.id, merchant.id, merchant.id, varn.id, "nope"]);
+    expect(sheetsOf(index).find((s) => s.id === varn.id)?.models).toEqual([
+      character.id,
+      merchant.id,
+    ]);
+    setSheetModels(index, varn.id, []);
+    expect(sheetsOf(index).find((s) => s.id === varn.id)?.models).toBeUndefined();
+
+    // Moving a sheet never changes what it takes.
+    moveSheet(index, varn.id, null);
+    expect(sheetsOf(index).find((s) => s.id === varn.id)?.models).toBeUndefined();
+    setFolderModels(index, folder.id, []);
+    expect(foldersOf(index)[0]?.models).toBeUndefined();
   });
 });
 

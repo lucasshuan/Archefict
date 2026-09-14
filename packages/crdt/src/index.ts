@@ -24,9 +24,11 @@
  */
 import {
   type Conversation,
+  type FieldMeta,
   type Folder,
   NarrativeEntry,
   type Provenance,
+  type SheetKind,
   type SheetSummary,
   type TimelineAction,
 } from "@archefict/schema";
@@ -41,8 +43,13 @@ export type TimelineDoc = {
 export type SheetDoc = {
   /** Rich text in Automerge's rich-text schema; ProseMirror edits it through @automerge/prosemirror. */
   body: string;
-  /** The structured half: what the AI reads first, and what Slice 4's components attach to. */
+  /** The fields, every value a string: what the AI reads first, and what Slice 4's components attach to. */
   fields: Record<string, string>;
+  /**
+   * What a field is, per key, when someone has said (docs/sheets.md). Optional and sparse: a
+   * key without one is read as text, or inferred from its value. Beside the value, never in it.
+   */
+  meta?: Record<string, FieldMeta>;
 };
 
 export type CampaignIndexDoc = {
@@ -86,8 +93,15 @@ export type CampaignHandles = {
   createConversation: (title: string) => Promise<Conversation>;
   /** Opens the body and fields of a sheet listed in the index. */
   openSheet: (id: string) => Promise<SheetHandles>;
-  /** Adds an empty sheet to a folder, or to the root with null. Durable before it returns. */
-  createSheet: (title: string, folderId: string | null) => Promise<SheetSummary>;
+  /**
+   * Adds an empty sheet to a folder, or to the root with null. Durable before it returns. A
+   * sheet takes the folder's models unless told otherwise; a model takes none.
+   */
+  createSheet: (
+    title: string,
+    folderId: string | null,
+    options?: { kind?: SheetKind; models?: string[] },
+  ) => Promise<SheetSummary>;
   /** Resolves once pending changes to the index have reached storage. */
   flush: () => Promise<void>;
 };
@@ -161,15 +175,24 @@ function handlesFor(repo: Repo, index: DocHandle<CampaignIndexDoc>): CampaignHan
       const doc = await repo.find<SheetDoc>(record.docUrl);
       return { id, doc, flush: () => repo.flush([doc.documentId]) };
     },
-    async createSheet(title, folderId) {
+    async createSheet(title, folderId, options = {}) {
       const doc = repo.create<SheetDoc>({ body: "", fields: {} });
+      const current = index.doc();
+      const handed =
+        options.kind === "model"
+          ? []
+          : (options.models ??
+            current.folders.find((folder) => folder.id === folderId)?.models ??
+            []);
       const record: SheetSummary = {
         id: crypto.randomUUID(),
         title,
         folderId,
-        order: index.doc().sheets.filter((sheet) => sheet.folderId === folderId).length,
+        order: current.sheets.filter((sheet) => sheet.folderId === folderId).length,
         docUrl: doc.url,
         createdAt: Date.now(),
+        ...(options.kind === "model" ? { kind: "model" as const } : {}),
+        ...(handed.length > 0 ? { models: [...handed] } : {}),
       };
       index.change((d) => {
         d.sheets.push(record);
@@ -373,6 +396,54 @@ export function restoreSheet(index: DocHandle<CampaignIndexDoc>, id: string): vo
   });
 }
 
+/**
+ * The models a sheet takes, replaced whole and in order: the first to claim a key wins.
+ * Taking or dropping a model writes nothing into the sheet's own fields — structure never
+ * destroys content. Ids that name no model, or the sheet itself, are dropped here.
+ */
+export function setSheetModels(
+  index: DocHandle<CampaignIndexDoc>,
+  id: string,
+  models: readonly string[],
+): void {
+  const current = index.doc();
+  const valid = new Set(
+    current.sheets.filter((s) => s.kind === "model" && s.id !== id).map((s) => s.id),
+  );
+  const next = [...new Set(models)].filter((model) => valid.has(model));
+  const target = current.sheets.find((s) => s.id === id);
+  if (!target || sameList(target.models ?? [], next)) return;
+  index.change((doc) => {
+    const sheet = doc.sheets.find((s) => s.id === id);
+    if (!sheet) return;
+    if (next.length === 0) delete sheet.models;
+    else sheet.models = next;
+  });
+}
+
+/** The models a folder hands to sheets created inside it. Existing sheets are not touched. */
+export function setFolderModels(
+  index: DocHandle<CampaignIndexDoc>,
+  id: string,
+  models: readonly string[],
+): void {
+  const current = index.doc();
+  const valid = new Set(current.sheets.filter((s) => s.kind === "model").map((s) => s.id));
+  const next = [...new Set(models)].filter((model) => valid.has(model));
+  const target = current.folders.find((f) => f.id === id);
+  if (!target || sameList(target.models ?? [], next)) return;
+  index.change((doc) => {
+    const folder = doc.folders.find((f) => f.id === id);
+    if (!folder) return;
+    if (next.length === 0) delete folder.models;
+    else folder.models = next;
+  });
+}
+
+function sameList(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((item, i) => item === b[i]);
+}
+
 /** Sets one field. A text diff when it exists already, so two devices editing one value merge. */
 export function setSheetField(sheet: DocHandle<SheetDoc>, key: string, value: string): void {
   const trimmed = key.trim();
@@ -383,10 +454,36 @@ export function setSheetField(sheet: DocHandle<SheetDoc>, key: string, value: st
   });
 }
 
+/** Removes a field: its value and whatever was said about it. A formula has only the latter. */
 export function removeSheetField(sheet: DocHandle<SheetDoc>, key: string): void {
-  if (!(key in sheet.doc().fields)) return;
+  const current = sheet.doc();
+  if (!(key in current.fields) && !(current.meta && key in current.meta)) return;
   sheet.change((doc) => {
     delete doc.fields[key];
+    if (doc.meta) delete doc.meta[key];
+  });
+}
+
+/**
+ * Says what a field is — number with a unit, select with its options — or, with null, stops
+ * saying it, so the field goes back to being read as text (or inferred from its value). The
+ * whole description is replaced at once: two devices describing one field concurrently keep
+ * one description, never a mixture. The value is not touched either way.
+ */
+export function setSheetFieldMeta(
+  sheet: DocHandle<SheetDoc>,
+  key: string,
+  meta: FieldMeta | null,
+): void {
+  const trimmed = key.trim();
+  if (trimmed === "") return;
+  sheet.change((doc) => {
+    if (meta === null) {
+      if (doc.meta) delete doc.meta[trimmed];
+      return;
+    }
+    if (!doc.meta) doc.meta = {};
+    doc.meta[trimmed] = structuredClone(meta);
   });
 }
 

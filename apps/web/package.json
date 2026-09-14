@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "@archefict/ai": "workspace:*",
@@ -26,10 +27,12 @@
     "marked": "catalog:",
     "prosemirror-commands": "catalog:",
     "prosemirror-history": "catalog:",
+    "prosemirror-inputrules": "catalog:",
     "prosemirror-keymap": "catalog:",
     "prosemirror-model": "catalog:",
     "prosemirror-schema-list": "catalog:",
     "prosemirror-state": "catalog:",
+    "prosemirror-tables": "catalog:",
     "prosemirror-view": "catalog:",
     "solid-js": "catalog:"
   },
@@ -40,6 +43,7 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-solid": "catalog:"
+    "vite-plugin-solid": "catalog:",
+    "vitest": "catalog:"
   }
 }

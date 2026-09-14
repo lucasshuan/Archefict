@@ -6,6 +6,7 @@ import { createEffect, createSignal, For, onCleanup } from "solid-js";
 import type { CampaignSummary } from "../campaign/store.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { CreateCampaignDialog } from "./CreateCampaignDialog.tsx";
+import { ACTIVE_ROW } from "./list-row.tsx";
 
 export type MockUser = {
   name: string;
@@ -94,8 +95,10 @@ export function Sidebar(props: {
                 const active = () => campaign.url === props.activeUrl;
                 return (
                   <li
-                    class="group flex items-center rounded-xl"
-                    classList={{ "bg-surface-raised": active() }}
+                    class="group flex items-center rounded-lg transition-colors hover:bg-surface-raised/60 motion-reduce:transition-none"
+                    classList={{
+                      [`bg-surface-raised hover:bg-surface-raised ${ACTIVE_ROW}`]: active(),
+                    }}
                   >
                     <button
                       type="button"

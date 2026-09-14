@@ -3,6 +3,7 @@ import type { ModelInfo } from "@archefict/contract";
 import ChevronDown from "lucide-solid/icons/chevron-down";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import { describe, formatContext, isFree, shortName, usd } from "./model-format.ts";
+import { highlightParts, rankModels } from "./model-search.ts";
 import { vendorMark } from "./model-vendors.ts";
 
 /** Past this the list stops being a list. The tail is reachable by typing, not scrolling. */
@@ -52,7 +53,7 @@ export function ModelCombobox(props: {
   const [placement, setPlacement] = createSignal<Placement | null>(null);
 
   const query = () => (typed() ? props.value.trim().toLowerCase() : "");
-  const matches = createMemo(() => rankAll(props.models, query()));
+  const matches = createMemo(() => rankModels(props.models, query(), suggestedRank));
   const visible = createMemo(() => matches().slice(0, MAX_ROWS));
   const hidden = () => matches().length - visible().length;
   /** Where the suggested block ends, so the divider only appears when there is one. */
@@ -166,7 +167,7 @@ export function ModelCombobox(props: {
         onClick={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        class="w-full rounded-app border border-border bg-bg py-2 pr-10 pl-3 font-mono text-sm"
+        class="w-full rounded-app border border-border bg-surface-sunken py-2 pr-10 pl-3 font-mono text-sm"
       />
       <button
         type="button"
@@ -358,33 +359,12 @@ function Option(props: {
 
 /** Marks where the query landed in the id, so a long slug shows why it is in the list. */
 function Highlight(props: { text: string; query: string }) {
-  const at = () => (props.query === "" ? -1 : props.text.toLowerCase().indexOf(props.query));
+  const parts = createMemo(() => highlightParts(props.text, props.query));
   return (
-    <Show when={at() >= 0} fallback={props.text}>
-      {props.text.slice(0, at())}
-      <span class="text-fg">{props.text.slice(at(), at() + props.query.length)}</span>
-      {props.text.slice(at() + props.query.length)}
-    </Show>
+    <For each={parts()}>
+      {(part) => (part.hit ? <span class="text-fg">{part.text}</span> : part.text)}
+    </For>
   );
-}
-
-/** Sorts the catalogue for a query. Best first; anything that does not match is dropped. */
-function rankAll(models: readonly ModelInfo[], query: string): ModelInfo[] {
-  const scored: Array<{ model: ModelInfo; score: number }> = [];
-  for (const model of models) {
-    const score = query === "" ? 0 : scoreModel(model, query);
-    if (score === null) continue;
-    scored.push({ model, score });
-  }
-  // Within one rank, models the narrator can use come before the ones it cannot.
-  scored.sort(
-    (a, b) =>
-      a.score - b.score ||
-      Number(!a.model.tools) - Number(!b.model.tools) ||
-      suggestedRank(a.model.id) - suggestedRank(b.model.id) ||
-      a.model.id.localeCompare(b.model.id),
-  );
-  return scored.map((entry) => entry.model);
 }
 
 /**
@@ -398,20 +378,6 @@ function nextEnabled(models: readonly ModelInfo[], from: number, step: number): 
     if (models[index]?.tools) return index;
   }
   return from;
-}
-
-/** Lower is better; `null` means no match at all. */
-function scoreModel(model: ModelInfo, query: string): number | null {
-  const id = model.id.toLowerCase();
-  const name = model.name.toLowerCase();
-  // Every word has to land somewhere, so "haiku anthropic" finds what "anthropic haiku" does.
-  const haystack = `${id} ${name}`;
-  if (!query.split(/s+/).every((token) => haystack.includes(token))) return null;
-  if (id === query) return 1;
-  if (id.startsWith(query)) return 2;
-  if (name.startsWith(query)) return 3;
-  if (id.includes(query)) return 4;
-  return 5;
 }
 
 function suggestedRank(id: string): number {

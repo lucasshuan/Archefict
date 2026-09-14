@@ -31,7 +31,7 @@ export function EditableTitle(props: { value: string; onCommit: (next: string) =
       fallback={
         <button
           type="button"
-          class="group flex min-w-0 items-center gap-2 rounded-app px-2 py-1 text-left hover:bg-surface-raised"
+          class="group flex min-w-0 items-center gap-2 rounded-app px-2 py-1 text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none"
           title="Rename campaign"
           onClick={start}
         >

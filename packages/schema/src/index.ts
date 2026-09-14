@@ -83,8 +83,17 @@ export const Folder = z.object({
   parentId: z.string().min(1).nullable(),
   /** Position among its siblings. Appended on creation; reordering comes later. */
   order: z.number().int().nonnegative(),
+  /**
+   * Models handed to a sheet made inside this folder, at creation, in this order. Handed,
+   * not imposed: the sheet lists them and can drop them, and moving a sheet changes nothing.
+   */
+  models: z.array(z.string().min(1)).optional(),
 });
 export type Folder = z.infer<typeof Folder>;
+
+/** A sheet is prose with fields; a model is a sheet other sheets take their shape from. */
+export const SheetKind = z.enum(["sheet", "model"]);
+export type SheetKind = z.infer<typeof SheetKind>;
 
 export const SheetSummary = z.object({
   id: z.string().min(1),
@@ -96,8 +105,36 @@ export const SheetSummary = z.object({
   createdAt: z.number().int().nonnegative(),
   /** Set when the sheet was put away. Archived, not deleted. */
   archivedAt: z.number().int().nonnegative().optional(),
+  /** Absent means a sheet. A model's fields and their types are what taking it brings. */
+  kind: SheetKind.optional(),
+  /** Ids of the models this sheet takes, in the order taken. First claim on a key wins. */
+  models: z.array(z.string().min(1)).optional(),
 });
 export type SheetSummary = z.infer<typeof SheetSummary>;
+
+/**
+ * What a field is (docs/sheets.md). Optional, per key, beside the value: the value stays a
+ * string whatever the type, and the type says how it is shown, edited and checked. A sheet
+ * says this for its own keys; a folder schema (later) says it for every sheet inside; a key
+ * nobody described is inferred from its value, then read as text. A formula stores no value.
+ */
+export const FieldMeta = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("text") }),
+  z.object({
+    type: z.literal("number"),
+    unit: z.string().optional(),
+    decimals: z.number().int().min(0).max(6).optional(),
+    thousands: z.boolean().optional(),
+  }),
+  z.object({ type: z.literal("select"), options: z.array(z.string()) }),
+  z.object({ type: z.literal("multiselect"), options: z.array(z.string()) }),
+  z.object({ type: z.literal("checkbox") }),
+  /** Reserved for campaign time (Slice 3). Shown, not yet editable. */
+  z.object({ type: z.literal("date") }),
+  z.object({ type: z.literal("formula"), expr: z.string() }),
+]);
+export type FieldMeta = z.infer<typeof FieldMeta>;
+export type FieldType = FieldMeta["type"];
 
 // ---------------------------------------------------------------------------
 // Timeline history. Local to one device, never synced: undo belongs to the person.

@@ -8,6 +8,8 @@ import {
   renameFolder,
   renameSheet,
   restoreSheet,
+  setFolderModels,
+  setSheetModels,
 } from "@archefict/crdt";
 import type { Folder, SheetSummary } from "@archefict/schema";
 import type { Doc } from "@automerge/automerge";
@@ -15,6 +17,7 @@ import { type Accessor, createMemo, createSignal } from "solid-js";
 
 export const NEW_SHEET_TITLE = "New sheet";
 export const NEW_FOLDER_TITLE = "New folder";
+export const NEW_MODEL_TITLE = "New model";
 
 const STATE_PREFIX = "archefict:library:";
 
@@ -29,6 +32,8 @@ export type SheetsStore = {
   /** Sheets that are not archived. */
   sheets: Accessor<readonly SheetSummary[]>;
   archived: Accessor<readonly SheetSummary[]>;
+  /** The models among the sheets that are not archived (docs/sheets.md). */
+  models: Accessor<readonly SheetSummary[]>;
   /** The sheet being read or written, or null when none is open. */
   active: Accessor<SheetSummary | null>;
   expanded: Accessor<ReadonlySet<string>>;
@@ -36,6 +41,12 @@ export type SheetsStore = {
   toggleFolder: (id: string) => void;
   /** Adds a sheet to a folder (null for the root), shows the folder, and opens the sheet. */
   createSheet: (folderId: string | null) => Promise<void>;
+  /** Adds a model: a sheet other sheets take their shape from. Opens it. */
+  createModel: (folderId: string | null) => Promise<SheetSummary>;
+  /** The models a sheet takes, in order. Replaced whole; nothing in the sheet is touched. */
+  setSheetModels: (id: string, models: readonly string[]) => Promise<void>;
+  /** The models a folder hands to sheets created inside it. */
+  setFolderModels: (id: string, models: readonly string[]) => Promise<void>;
   createFolder: (parentId: string | null) => Promise<void>;
   renameSheet: (id: string, title: string) => Promise<void>;
   renameFolder: (id: string, title: string) => Promise<void>;
@@ -67,6 +78,7 @@ export function createSheetsStore(
   const archived = createMemo(() =>
     index().sheets.filter((sheet) => sheet.archivedAt !== undefined),
   );
+  const models = createMemo(() => sheets().filter((sheet) => sheet.kind === "model"));
   // Unlike a conversation, a sheet has no natural default: nothing open shows the empty state.
   const active = createMemo(() => sheets().find((sheet) => sheet.id === activeId()) ?? null);
 
@@ -90,6 +102,7 @@ export function createSheetsStore(
     folders,
     sheets,
     archived,
+    models,
     active,
     expanded,
     select,
@@ -137,6 +150,20 @@ export function createSheetsStore(
     async restoreSheet(id) {
       restoreSheet(handles.index, id);
       select(id);
+      await handles.flush();
+    },
+    async createModel(folderId) {
+      const created = await handles.createSheet(NEW_MODEL_TITLE, folderId, { kind: "model" });
+      reveal(folderId);
+      select(created.id);
+      return created;
+    },
+    async setSheetModels(id, taken) {
+      setSheetModels(handles.index, id, taken);
+      await handles.flush();
+    },
+    async setFolderModels(id, handed) {
+      setFolderModels(handles.index, id, handed);
       await handles.flush();
     },
   };
